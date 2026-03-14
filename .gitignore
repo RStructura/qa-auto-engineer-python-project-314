@@ -1,0 +1,15 @@
+__pycache__/
+.coverage/
+.Makefile.swp
+.pytest_cache/
+.python-version
+.ruff_cache/
+.venv/
+*_cache/
+*.cast
+*.egg-info
+*.pyc
+build/
+coverage.xml
+dist/
+main.py
