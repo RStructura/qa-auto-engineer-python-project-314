@@ -9,5 +9,8 @@ start:
 
 export APP_BASE_URL=http://localhost:5173
 
-test:
+smoke_test:
 	uv run pytest -k smoke
+
+test:
+	uv run pytest -k "not smoke"
