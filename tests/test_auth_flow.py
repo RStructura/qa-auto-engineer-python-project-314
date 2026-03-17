@@ -1,26 +1,29 @@
 import pytest
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.login_page import LoginPage
 
 
-def test_successful_login_and_logout(driver, base_url):
-    login_page = LoginPage(driver)
+@pytest.mark.smoke
+def test_login_page_elements(driver, base_url):
     driver.get(base_url)
+    page = LoginPage(driver)
+    # Проверка наличия элементов
+    assert "Task manager" in driver.title
+    assert page.is_login_button_visible(), "Кнопка логина не отображается"
 
-    login_page.login("test", "123456")
 
-    wait = WebDriverWait(driver, 10)
-    dashboard_element = wait.until(
-        EC.presence_of_element_located((By.ID, "main-content"))
-    )
-    assert dashboard_element.is_displayed()
-
-    login_page.logout()
-
-    wait.until(
-        EC.visibility_of_element_located(login_page.login_button)
-    )
-    assert driver.find_element(*login_page.login_button).is_displayed()
+@pytest.mark.step_3
+def test_successful_login_and_logout(driver, base_url):
+    page = LoginPage(driver)
+    driver.get(base_url)
+    # Авторизация
+    page.login("test", "sadsads")
+    # Проверка входа: поиск кнопки профиля
+    assert driver.find_element(
+        By.CSS_SELECTOR, 'button[aria-label="Profile"]').is_displayed()
+    # Выход
+    page.logout()
+    # Проверка выхода: поиск кнопки логина
+    assert page.is_login_button_visible()
+    print("\nУспех! Вход и выход работают корректно.")

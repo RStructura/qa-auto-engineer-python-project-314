@@ -8,6 +8,7 @@ __pycache__/
 *_cache/
 *.cast
 *.egg-info
+*.log
 *.pyc
 build/
 coverage.xml
