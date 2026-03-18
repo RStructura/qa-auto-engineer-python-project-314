@@ -18,11 +18,11 @@ from pages.login_page import LoginPage
 class SlowMotionListener(AbstractEventListener):
     # Пауза после каждого клика
     def after_click(self, element, driver):
-        time.sleep(1)
+        time.sleep(0)
 
     # Пауза после ввода текста
     def after_change_value_of(self, element, driver):
-        time.sleep(1)
+        time.sleep(0)
 
 
 # Работа с Chrome

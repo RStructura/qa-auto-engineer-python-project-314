@@ -34,5 +34,23 @@ test_step4_deleteOne:
 test_step4_deleteAll:
 	uv run pytest -k step_4_deleteAll -sv
 
+test_step5:
+	uv run pytest tests/test_statuses.py -sv
+
+test_step5_view:
+	uv run pytest -k step_5_viewList -sv
+
+test_step5_create:
+	uv run pytest -k step_5_createStatus -sv
+
+test_step5_edit:
+	uv run pytest -k step_5_editStatus -sv
+
+test_step5_deleteOne:
+	uv run pytest -k step_5_deleteOne -sv
+
+test_step5_deleteAll:
+	uv run pytest -k step_5_deleteAll -sv
+
 tasks_test:
 	uv run pytest -k step_tasks -sv
