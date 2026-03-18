@@ -52,5 +52,23 @@ test_step5_deleteOne:
 test_step5_deleteAll:
 	uv run pytest -k step_5_deleteAll -sv
 
+test_step6:
+	uv run pytest tests/test_labels.py -sv
+
+test_step6_view:
+	uv run pytest -k step_6_viewList -sv
+
+test_step6_create:
+	uv run pytest -k step_6_createLabel -sv
+
+test_step6_edit:
+	uv run pytest -k step_6_editLabel -sv
+
+test_step6_deleteOne:
+	uv run pytest -k step_6_deleteOne -sv
+
+test_step6_deleteAll:
+	uv run pytest -k step_6_deleteAll -sv
+
 tasks_test:
 	uv run pytest -k step_tasks -sv

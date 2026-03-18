@@ -1,9 +1,9 @@
 import time
 
 import pytest
+from selenium.webdriver.common.by import By
 
 from pages.users_page import UsersPage
-from selenium.webdriver.common.by import By
 
 
 @pytest.mark.step_4_viewList

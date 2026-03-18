@@ -4,23 +4,22 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
 
-class StatusesPage:
+class LabelsPage:
     def __init__(self, driver):
         self.driver = driver
 
 
 # НАВИГАЦИЯ НА СТРАНИЦУ
-    def open_statuses(self):
-        self.driver.find_element(
-            By.CSS_SELECTOR, 'a[href="#/task_statuses"]').click()
+    def open_labels(self):
+        self.driver.find_element(By.CSS_SELECTOR, 'a[href="#/labels"]').click()
 
 
 # ПОЛУЧЕНИЕ ДАННЫХ ДЛЯ ПРОВЕРОК
-    def get_statuses_count(self):
+    def get_labels_count(self):
         return len(self.driver.find_elements(
             By.CSS_SELECTOR, 'tr.RaDatagrid-row'))
 
-    def get_first_status_name(self):
+    def get_first_label_name(self):
         return self.driver.find_element(By.CSS_SELECTOR, 'td.column-name').text
 
     def get_error_message(self):
@@ -31,7 +30,7 @@ class StatusesPage:
 
 
 # РАБОТА СО СПИСКОМ
-    def open_first_status(self):
+    def open_first_label(self):
         self.driver.find_element(
             By.CSS_SELECTOR, 'tbody tr:first-child').click()
 
@@ -55,16 +54,14 @@ class StatusesPage:
             return False
 
 
-# СОЗДАНИЕ/РЕДАКТИРОВАНИЕ СТАТУСА
+# СОЗДАНИЕ/РЕДАКТИРОВАНИЕ ЛЕЙБЛА
     def click_create(self):
         self.driver.find_element(
-            By.CSS_SELECTOR, 'a[href="#/task_statuses/create"]').click()
+            By.CSS_SELECTOR, 'a[href="#/labels/create"]').click()
 
-    def fill_status_form(self, name=None, slug=None):
+    def fill_label_form(self, name=None):
         if name:
             self.driver.find_element(By.NAME, "name").send_keys(name)
-        if slug:
-            self.driver.find_element(By.NAME, "slug").send_keys(slug)
 
     def click_save(self):
         self.driver.find_element(
