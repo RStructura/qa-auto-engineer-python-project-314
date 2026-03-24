@@ -1,8 +1,8 @@
 import random
 import time
+
 import pytest
 
-from selenium.webdriver.common.by import By
 from pages.tasks_page import TasksPage
 
 
@@ -12,26 +12,17 @@ def test_view_tasks(auth_driver):
     # Авторизация и переход на страницу
     page = TasksPage(auth_driver)
     page.open_tasks()
-    # Проверка загрузки страницы
-    assignee_filter = auth_driver.find_element(By.CSS_SELECTOR, '[data-source="assignee_id"]')
-    status_filter = auth_driver.find_element(By.CSS_SELECTOR, '[data-source="status_id"]')
-    label_filter = auth_driver.find_element(By.CSS_SELECTOR, '[data-source="label_id"]')
-    assert assignee_filter.is_displayed()
-    assert "Assignee" in assignee_filter.text
-    assert status_filter.is_displayed()
-    assert "Status" in status_filter.text
-    assert label_filter.is_displayed()
-    assert "Label" in label_filter.text
-    # Проверка загрузки задач
-    # tasks = auth_driver.find_elements(By.CSS_SELECTOR, '.MuiCard-root')
-    # count = len(tasks)
-    # assert count > 0, "Задачи не отображаются на канбан-доске"
+    # Проверка видимости и названий фильтров
+    assert page.verify_filters_visible(), (
+        "Фильтры на странице Tasks не загрузились"
+    )
+    # Проверка наличия задач на доске
     count = page.get_tasks_count()
     assert count > 0, "Задачи не отображаются на канбан-доске"
     print(f"\nУспех! Канбан-доска загружена. Найдено задач: {count}")
 
 
-# Просмотр и фильтрация | Проверьте основные фильтры (по статусу, исполнителю, меткам)...
+# Просмотр и фильтрация | Проверьте основные фильтры...
 @pytest.mark.step_7_filtersTasks
 def test_filter_tasks(auth_driver):
     page = TasksPage(auth_driver)
@@ -81,7 +72,9 @@ def test_create_new_task(auth_driver):
     page.open_tasks()
 
     # Проверка появления новой задачи в списке
-    assert test_title in page.get_page_context(), f"Задача {test_title} не найдена!"
+    assert test_title in page.get_page_context(), (
+        f"Задача {test_title} не найдена!"
+    )
 
     # Подсчет количества задач
     final_count = page.get_tasks_count()
@@ -111,7 +104,6 @@ def test_edit_task(auth_driver):
     new_status = "Draft"
     old_labels = ["bug", "feature"]
     new_labels = ["task", "enhancement"] 
-    # Список значений для old_labels = ["critical", "task", "enhancement", "feature", "bug"]
 
     # Редактирование
     page.update_task_fields(
@@ -136,7 +128,10 @@ def test_edit_task(auth_driver):
     assert new_status in page_context
     assert new_label_random in page_context.lower()
 
-    print(f"\nУспех! Задача с ID = {task_id} успешно обновлена. Новые данные подтверждены.")
+    print(
+        f"\nУспех! Задача с ID = {task_id} успешно обновлена. "
+        "Новые данные подтверждены."
+    )
 
 
 # Перемещение между колонками | Перетащите карточку в другой статус...
@@ -150,8 +145,10 @@ def test_drag_and_drop_between_columns(auth_driver):
     target_status = "Draft"
 
     # Проверка стартового статуса задачи
-    assert page.is_task_in_column(task_id, start_status), \
-        f"Ошибка: Задача {task_id} должна быть в {start_status} перед началом теста!"
+    assert page.is_task_in_column(task_id, start_status), (
+        f"Ошибка: Задача {task_id} должна быть в {start_status} "
+        "перед началом теста!"
+    )
 
     # Перемещение
     page.move_task_to_status(task_id, target_status)
@@ -162,7 +159,9 @@ def test_drag_and_drop_between_columns(auth_driver):
     assert not page.is_task_in_column(task_id, start_status), \
         f"Задача {task_id} ВСЕ ЕЩЕ видна в старой колонке {start_status}!"
 
-    print(f"\nУспех! Задача с ID = {task_id} перемещена из статуса '{start_status}' в '{target_status}'.")
+    print(f"\nУспех! Задача с ID = {task_id} "
+        "перемещена из статуса '{start_status}' в '{target_status}'."
+    )
 
 
 # Удаление | Удалите задачу и убедитесь...
@@ -186,4 +185,5 @@ def test_delete_task_by_show(auth_driver):
         f"Ожидали {initial_count - 1} задач, но нашли {final_count}")
     print(
         f"\nУспех! Было задач: {initial_count}, стало: {final_count}. "
-        f"Карточка с ID = '{task_id}' удалена с доски.")
+        f"Карточка с ID = '{task_id}' удалена с доски."
+    )

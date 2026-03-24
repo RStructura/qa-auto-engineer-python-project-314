@@ -1,5 +1,6 @@
 import time
 
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -12,18 +13,15 @@ class TasksPage:
         self.driver = driver
         self.wait = WebDriverWait(driver, 20)
 
-        # Локаторы_old
-        # self.tasks_url = (By.CSS_SELECTOR, 'a[href="#/tasks"]')
-        # self.create_btn = (By.CSS_SELECTOR, 'a[href="#/tasks/create"]')
-        # self.task_elements = (By.CSS_SELECTOR, '[data-rfd-draggable-id]')
-        # self.name_input = (By.NAME, "title")
-        # self.description_input = (By.NAME, "content")
-        # self.save_btn = (By.CSS_SELECTOR, 'button[type="submit"]')
-        # self.delete_btn = (By.CSS_SELECTOR, '[aria-label="Delete"]')
-
-        # Локаторы_new
+        # Локаторы
         self.url_tasks = (By.CSS_SELECTOR, 'a[href="#/tasks"]')
         self.element_task = (By.CSS_SELECTOR, '[data-rfd-draggable-id]')
+        self.filter_assignee_container = (
+            By.CSS_SELECTOR, '[data-source="assignee_id"]')
+        self.filter_status_container = (
+            By.CSS_SELECTOR, '[data-source="status_id"]')
+        self.filter_label_container = (
+            By.CSS_SELECTOR, '[data-source="label_id"]')
         self.input_name = (By.NAME, "title")
         self.input_description = (By.NAME, "content")
         self.btn_create = (By.CSS_SELECTOR, '[aria-label="Create"]')
@@ -90,22 +88,26 @@ class TasksPage:
         # Ожидание закрытия списка
         time.sleep(0.5)
 
-    # Фильтры
-    def filter_by_assignee(self, assignee):
-        self.select_filter("assignee_id", assignee)
-
-    def filter_by_status(self, status):
-        self.select_filter("status_id", status)
-
-    def filter_by_label(self, label):
-        self.select_filter("label_id", label)
+    def verify_filters_visible(self):
+        filters = {
+            self.filter_assignee_container: "Assignee",
+            self.filter_status_container: "Status",
+            self.filter_label_container: "Label"
+        }
+        for locator, expected_text in filters.items():
+            element = self.wait.until(EC.visibility_of_element_located(locator))
+            assert expected_text in element.text, (
+                f"Фильтр {expected_text} не найден или текст неверный"
+            )
+        return True
 
 
 # СОЗДАНИЕ ЗАДАЧ
     def select_option(self, input_name, text):
         input_element = self.wait.until(
             EC.presence_of_element_located((By.NAME, input_name)))
-        combobox = input_element.find_element(By.XPATH, "../div[@role='combobox']")
+        combobox = input_element.find_element(
+            By.XPATH, "../div[@role='combobox']")
 
         # Скролл к элементу и клик
         self.driver.execute_script(
@@ -141,20 +143,24 @@ class TasksPage:
 # РЕДАКТИРОВАНИЕ ЗАДАЧ
     def open_task_edit(self, task_id):
         # Связь ID задачи и кнопки Edit через вложенность
-        edit_locator = (By.CSS_SELECTOR, f'[data-rfd-draggable-id="{task_id}"] a[aria-label="Edit"]')
+        edit_locator = (By.CSS_SELECTOR, 
+            f'[data-rfd-draggable-id="{task_id}"] a[aria-label="Edit"]')
         self.wait.until(EC.element_to_be_clickable(edit_locator)).click()
 
-    def clear_text_field(self, locator):
-        element = self.wait.until(EC.visibility_of_element_located(locator)).click()        
+    def clear_text_field(self, element):
+        element = self.wait.until(
+            EC.visibility_of_element_located(element)).click()
         actions = ActionChains(self.driver)
-        actions.key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
+        actions.key_down(Keys.CONTROL).send_keys('a'
+            ).key_up(Keys.CONTROL).perform()
         actions.send_keys(Keys.BACKSPACE).perform()
 
     def clear_labels(self, current_labels):
         for label in current_labels:
             self.select_option("label_id", label)
 
-    def update_task_fields(self, title=None, content=None, assignee=None, status=None, new_labels=None, old_labels=None):
+    def update_task_fields(self, title=None, content=None, 
+        assignee=None, status=None, new_labels=None, old_labels=None):
         if assignee:
             self.select_option("assignee_id", assignee)
         if title:
@@ -177,11 +183,16 @@ class TasksPage:
     def move_task_to_status(self, task_id, target_status):
         # Поиск задач
         handle_xpath = f'//div[@data-rfd-drag-handle-draggable-id="{task_id}"]'
-        handle = self.wait.until(EC.presence_of_element_located((By.XPATH, handle_xpath)))
+        handle = self.wait.until(
+            EC.presence_of_element_located((By.XPATH, handle_xpath)))
 
         # Поиск активной зоны дропа
-        column_xpath = f"//h6[text()='{target_status}']/following-sibling::div[@data-rfd-droppable-id]"
-        target_column = self.wait.until(EC.presence_of_element_located((By.XPATH, column_xpath)))
+        column_xpath = (
+            f"//h6[text()='{target_status}']"
+            "/following-sibling::div[@data-rfd-droppable-id]"
+        )
+        target_column = self.wait.until(
+            EC.presence_of_element_located((By.XPATH, column_xpath)))
 
         actions = ActionChains(self.driver)
         
@@ -201,18 +212,23 @@ class TasksPage:
 
     def is_task_in_column(self, task_id, status_name):
         """Проверяет наличие карточки в конкретной колонке."""
-        xpath = (f"//h6[text()='{status_name}']/following-sibling::div"
-                 f"//div[@data-rfd-draggable-id='{task_id}']")
+        xpath = (
+            f"//h6[text()='{status_name}']/following-sibling::div"
+            f"//div[@data-rfd-draggable-id='{task_id}']"
+        )
         try:
             return self.driver.find_element(By.XPATH, xpath).is_displayed()
-        except:
+        except NoSuchElementException:
             return False
 
 
 # УДАЛЕНИЕ ЗАДАЧ
-    def open_task_delete (self, task_id):
+    def open_task_delete(self, task_id):
         # Связь ID задачи и кнопки Edit через вложенность
-        show_locator = (By.CSS_SELECTOR, f'[data-rfd-draggable-id="{task_id}"] a[aria-label="Show"]')
+        show_locator = (
+            By.CSS_SELECTOR, 
+            f'[data-rfd-draggable-id="{task_id}"] a[aria-label="Show"]'
+        )
         self.wait.until(EC.element_to_be_clickable(show_locator)).click()
 
     def delete_task(self):
