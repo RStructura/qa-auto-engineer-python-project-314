@@ -12,31 +12,35 @@ def test_view_tasks(auth_driver):
     # Авторизация и переход на страницу
     page = TasksPage(auth_driver)
     page.open_tasks()
+
     # Проверка видимости и названий фильтров
     assert page.verify_filters_visible(), (
         "Фильтры на странице Tasks не загрузились"
     )
+
     # Проверка наличия задач на доске
     count = page.get_tasks_count()
     assert count > 0, "Задачи не отображаются на канбан-доске"
     print(f"\nУспех! Канбан-доска загружена. Найдено задач: {count}")
 
 
-# Просмотр и фильтрация | Проверьте основные фильтры...
 @pytest.mark.step_7_filtersTasks
 def test_filter_tasks(auth_driver):
     page = TasksPage(auth_driver)
     page.open_tasks()
+
     # Выбор фильтров
-    page.filter_by_assignee("john@google.com")
-    page.filter_by_status("Published")
-    page.filter_by_label("feature")
+    page.select_filter("assignee_id", "john@google.com")
+    page.select_filter("status_id", "Published")
+    page.select_filter("label_id", "feature")
     time.sleep(1)
+    
     # Проверка выбора фильтров
     page_context = page.get_page_context()
     assert "john@google.com" in page_context.lower()
     assert "Published" in page_context
     assert "feature" in page_context.lower()
+    
     # Проверка загрузки задач
     count = page.get_tasks_count()
     print(f"\nУспех! Фильтры работают. Найдено задач: {count}")
@@ -118,12 +122,18 @@ def test_edit_task(auth_driver):
     # Проверка обновления данных
     new_label_random = random.choice(new_labels)
     context = page.get_page_context()
+    
     assert new_title in context, f"Новый заголовок '{new_title}' не найден!"
     assert new_content in context, f"Новое описание '{new_content}' не найдено!"
-    page.filter_by_assignee(new_assignee)
-    page.filter_by_status(new_status)
-    page.filter_by_label(new_label_random)
+
+    # Проверка через фильтрацию
+    page.select_filter("assignee_id", new_assignee)
+    page.select_filter("status_id", new_status)
+    page.select_filter("label_id", new_label_random)
+    
+    # Получение обновленного контекста
     page_context = page.get_page_context()
+    
     assert new_assignee in page_context.lower()
     assert new_status in page_context
     assert new_label_random in page_context.lower()
@@ -132,6 +142,7 @@ def test_edit_task(auth_driver):
         f"\nУспех! Задача с ID = {task_id} успешно обновлена. "
         "Новые данные подтверждены."
     )
+
 
 
 # Перемещение между колонками | Перетащите карточку в другой статус...
