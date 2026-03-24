@@ -11,7 +11,7 @@ def test_view_users_list(auth_driver):
     # Проверка открытия списка и загрузки страницы
     page = UsersPage(auth_driver)
     page.open_users()
-    # Проверка наличия в элементов и списка
+    # Проверка наличия элементов и списка
     header_text = auth_driver.find_element(
         By.CSS_SELECTOR, 'table thead').text
     assert "Email" in header_text
