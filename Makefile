@@ -1,3 +1,14 @@
+install:
+	uv sync
+
+start:
+	docker run --rm -p 5173:5173 hexletprojects/qa_auto_python_testing_kanban_board_project_ru_app
+
+export APP_BASE_URL=http://localhost:5173
+
+check:
+	$(MAKE) lint
+	$(MAKE) test_all
 
 lint:
 	uv run ruff check
@@ -5,16 +16,23 @@ lint:
 lint_fix:
 	uv run ruff check --fix
 
-start:
-	docker run --rm -p 5173:5173 hexletprojects/qa_auto_python_testing_kanban_board_project_ru_app
+test_all:
+	uv run pytest tests/ -sv --tb=short
 
-export APP_BASE_URL=http://localhost:5173
+test-coverage:
+	uv run pytest --cov=pages --cov-report=xml tests/
+
+# ---------------------------------------
 
 smoke_test:
 	uv run pytest -k smoke -sv --tb=short
 
+# ---------------------------------------
+
 auth_test:
 	uv run pytest -k step_3 -sv --tb=short
+
+# ---------------------------------------
 
 test_step4:
 	uv run pytest tests/test_users.py -sv --tb=short
@@ -34,6 +52,8 @@ test_step4_deleteOne:
 test_step4_deleteAll:
 	uv run pytest -k step_4_deleteAll -sv --tb=short
 
+# ---------------------------------------
+
 test_step5:
 	uv run pytest tests/test_statuses.py -sv --tb=short
 
@@ -52,6 +72,8 @@ test_step5_deleteOne:
 test_step5_deleteAll:
 	uv run pytest -k step_5_deleteAll -sv --tb=short
 
+# ---------------------------------------
+
 test_step6:
 	uv run pytest tests/test_labels.py -sv --tb=short
 
@@ -69,6 +91,8 @@ test_step6_deleteOne:
 
 test_step6_deleteAll:
 	uv run pytest -k step_6_deleteAll -sv --tb=short
+
+# ---------------------------------------
 
 test_step7:
 	uv run pytest tests/test_tasks.py -sv --tb=short

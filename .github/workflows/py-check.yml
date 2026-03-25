@@ -1,0 +1,48 @@
+name: Python CI
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Start application in Docker
+        run: make start &
+
+      - name: Wait for application
+        run: sleep 20
+
+      - name: Run linter and tests
+        env:
+          APP_BASE_URL: http://localhost:5173
+        run: make check
+
+      - name: Generate Coverage Report
+        run: make test-coverage
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=RStructura_qa-auto-engineer-python-project-314
+            -Dsonar.organization=rstructura
+            -Dsonar.python.coverage.reportPaths=coverage.xml
+            -Dsonar.sources=pages

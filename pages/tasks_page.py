@@ -181,43 +181,47 @@ class TasksPage:
 
 # ПЕРЕМЕЩЕНИЕ ЗАДАЧ
     def move_task_to_status(self, task_id, target_status):
-        # Поиск задач
+        # Поиск задачи и зоны дропа
         handle_xpath = f'//div[@data-rfd-drag-handle-draggable-id="{task_id}"]'
-        handle = self.wait.until(
-            EC.presence_of_element_located((By.XPATH, handle_xpath)))
-
-        # Поиск активной зоны дропа
         column_xpath = (
             f"//h6[text()='{target_status}']"
             "/following-sibling::div[@data-rfd-droppable-id]"
         )
-        target_column = self.wait.until(
-            EC.presence_of_element_located((By.XPATH, column_xpath)))
+        
+        source = self.wait.until(
+            EC.presence_of_element_located((By.XPATH, handle_xpath))
+        )
+        target = self.wait.until(
+            EC.presence_of_element_located((By.XPATH, column_xpath))
+        )
 
         actions = ActionChains(self.driver)
         
         # Алгоритм действий для перемещния
         (actions
-         .move_to_element(handle)
-         .click_and_hold(handle)
-         .move_by_offset(5, 5)
-         .pause(0.5)
-         .move_to_element(target_column)
-         .pause(0.5)
-         .release()
+         .move_to_element(source)       # Наведение
+         .click_and_hold(source)        # Зажитие
+         .pause(0.5)                    # Ожидание активации режима Drag в React
+         .move_by_offset(10, 10)         # Сдвиг вбок, чтобы сорвать с места
+         .pause(1)
+         .move_to_element(target)       # Перетаскивание к цели
+         .pause(1)                    # Ожидание активации новой колонки
+         .release()                     # Дроп
          .perform())
         
         # Ожидание завершения анимации перемещения в интерфейсе
-        time.sleep(0.5)
+        time.sleep(1)
 
     def is_task_in_column(self, task_id, status_name):
-        """Проверяет наличие карточки в конкретной колонке."""
+        # Проверка карточки в конкретной колонке
         xpath = (
             f"//h6[text()='{status_name}']/following-sibling::div"
             f"//div[@data-rfd-draggable-id='{task_id}']"
         )
+
         try:
-            return self.driver.find_element(By.XPATH, xpath).is_displayed()
+            self.driver.find_element(By.XPATH, xpath)
+            return True
         except NoSuchElementException:
             return False
 

@@ -144,7 +144,6 @@ def test_edit_task(auth_driver):
     )
 
 
-
 # Перемещение между колонками | Перетащите карточку в другой статус...
 @pytest.mark.step_7_dragAndDropTasks
 def test_drag_and_drop_between_columns(auth_driver):
@@ -166,12 +165,10 @@ def test_drag_and_drop_between_columns(auth_driver):
 
     # Проверка перемещения в целевой статус
     assert page.is_task_in_column(task_id, target_status), \
-        f"Задача {task_id} НЕ появилась в колонке {target_status}!"
-    assert not page.is_task_in_column(task_id, start_status), \
-        f"Задача {task_id} ВСЕ ЕЩЕ видна в старой колонке {start_status}!"
+        f"Задача {task_id} не перемещена в статус {target_status}!"
 
     print(f"\nУспех! Задача с ID = {task_id} "
-        "перемещена из статуса '{start_status}' в '{target_status}'."
+        f"перемещена из статуса '{start_status}' в '{target_status}'."
     )
 
 

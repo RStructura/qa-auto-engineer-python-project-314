@@ -19,13 +19,14 @@ from pages.login_page import LoginPage
 def driver():
     options = Options()
 
+    # Настройка виртуального окна
+    options.add_argument("--headless=new")
+    options.add_argument("--window-size=1920,1080")
+
     # Отключение плашки об автоматизации
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     
-    # Отключение проверки паролей
-    options.add_argument("--disable-features=SafeBrowsingPasswordProtection")
-    
-    # Отключение окна сохранения пароля
+    # Отключение проверки паролей и окна сохранения
     prefs = {"credentials_enable_service": False, 
         "profile.password_manager_enabled": False}
     options.add_experimental_option("prefs", prefs)
