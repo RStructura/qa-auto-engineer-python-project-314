@@ -47,11 +47,11 @@ def driver():
 class SlowMotionListener(AbstractEventListener):
     # Пауза после каждого клика
     def after_click(self, element, driver):
-        time.sleep(0)
+        time.sleep(1)
     
     # Пауза после каждого ввода текста
     def after_change_value_of(self, element, driver):
-        time.sleep(0)
+        time.sleep(1)
 
 
 # Фикстура: Базовый URL
