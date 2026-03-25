@@ -36,23 +36,21 @@ def driver():
 
     remote_url = os.getenv('SELENIUM_REMOTE_URL')
 
-    try:
-        # Попытка импортировать менеджер - локальная среда / CI
-        from webdriver_manager.chrome import ChromeDriverManager
-        
-        # Если remote_url нет - запуск локальный с актуальным Chrome
-        if not remote_url:
+    if not remote_url and os.getenv('GITHUB_ACTIONS') != 'true':
+        # Локальный запуск с актуальным Chrome
+        try:
+            from webdriver_manager.chrome import ChromeDriverManager
             service = Service(ChromeDriverManager().install())
             raw_driver = webdriver.Chrome(service=service, options=options)
-        else:
-            # Если remote_url есть - использование его
+        except Exception:
+            # Если webdriver_manager - подключение к удаленному браузеру.
+            # Если переменная пустая - стандартный адрес контейнера в Docker
             raw_driver = webdriver.Remote(
-                command_executor=remote_url, options=options
-            )
-            
-    except ImportError:
-        # Если webdriver_manager - подключение к удаленному браузеру.
-        # Если переменная пустая - стандартный адрес контейнера в Docker
+                command_executor="http://localhost:4444/wd/hub", 
+                options=options
+            )              
+    else:
+        # Костыль для Хекслет
         url = remote_url or "http://server:4444/wd/hub"
         raw_driver = webdriver.Remote(command_executor=url, options=options)
     
