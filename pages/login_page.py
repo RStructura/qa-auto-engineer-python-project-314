@@ -17,21 +17,28 @@ class LoginPage:
         snackbar_locator = (By.CLASS_NAME, "MuiSnackbarContent-root")
         self.wait.until(EC.invisibility_of_element_located(snackbar_locator))
         
-        submit_btn = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[type="submit"]')))
+        submit_btn = self.wait.until(EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, 'button[type="submit"]'))
+        )
         submit_btn.click()
 
     def logout(self):
         # Открытие меню профиля
-        profile_btn = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[aria-label="Profile"]')))
+        profile_btn = self.wait.until(EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, 'button[aria-label="Profile"]'))
+        )
         profile_btn.click()
         
         # Клик по кнопке Logout
-        logout_item = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//li[contains(., 'Logout')]")))
+        logout_item = self.wait.until(EC.element_to_be_clickable(
+            (By.XPATH, "//li[contains(., 'Logout')]"))
+        )
         logout_item.click()
 
     def is_login_button_visible(self):
         try:
             # Проверка наличия кнопки на странице
-            return self.driver.find_element(By.CSS_SELECTOR, 'button[type="submit"]').is_displayed()
+            return self.driver.find_element(
+                By.CSS_SELECTOR, 'button[type="submit"]').is_displayed()
         except NoSuchElementException:
             return False
