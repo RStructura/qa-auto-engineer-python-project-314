@@ -18,7 +18,7 @@ def test_successful_login_and_logout(driver, base_url):
     page = LoginPage(driver)
     driver.get(base_url)
     # Авторизация
-    page.login("test", "sadsads")
+    page.login("admin@google.com", "admin1234567")
     # Проверка входа: поиск кнопки профиля
     assert driver.find_element(
         By.CSS_SELECTOR, 'button[aria-label="Profile"]').is_displayed()
