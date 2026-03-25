@@ -1,7 +1,8 @@
 [project]
-name = "qa-auto-engineer-python-project-314"
+name = "hexlet-code"
 version = "0.1.0"
-description = "Add your description here"
+description = "Project: Testing a Kanban Board with Selenium"
+authors = [{ name = "RStructura" }]
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
