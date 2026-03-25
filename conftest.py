@@ -9,7 +9,6 @@ from selenium.webdriver.support.event_firing_webdriver import (
     EventFiringWebDriver,
 )
 from selenium.webdriver.support.events import AbstractEventListener
-from webdriver_manager.chrome import ChromeDriverManager
 
 from pages.login_page import LoginPage
 
@@ -17,6 +16,8 @@ from pages.login_page import LoginPage
 # Работа с Chrome
 @pytest.fixture
 def driver():
+    from webdriver_manager.chrome import ChromeDriverManager
+
     options = Options()
 
     # Настройка виртуального окна
@@ -47,11 +48,11 @@ def driver():
 class SlowMotionListener(AbstractEventListener):
     # Пауза после каждого клика
     def after_click(self, element, driver):
-        time.sleep(1)
+        time.sleep(0.3)
     
     # Пауза после каждого ввода текста
     def after_change_value_of(self, element, driver):
-        time.sleep(1)
+        time.sleep(0.3)
 
 
 # Фикстура: Базовый URL
