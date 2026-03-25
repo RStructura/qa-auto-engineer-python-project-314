@@ -16,8 +16,6 @@ from pages.login_page import LoginPage
 # Работа с Chrome
 @pytest.fixture
 def driver():
-    from webdriver_manager.chrome import ChromeDriverManager
-
     options = Options()
 
     # Настройка виртуального окна
@@ -31,10 +29,32 @@ def driver():
     prefs = {"credentials_enable_service": False, 
         "profile.password_manager_enabled": False}
     options.add_experimental_option("prefs", prefs)
-    
-    # Проверка актуальности версии браузера и его открытие
-    service = Service(ChromeDriverManager().install())
-    raw_driver = webdriver.Chrome(service=service, options=options)
+
+    # Костыль блокировок в CI
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+
+    remote_url = os.getenv('SELENIUM_REMOTE_URL')
+
+    try:
+        # Попытка импортировать менеджер - локальная среда / CI
+        from webdriver_manager.chrome import ChromeDriverManager
+        
+        # Если remote_url нет - запуск локальный с актуальным Chrome
+        if not remote_url:
+            service = Service(ChromeDriverManager().install())
+            raw_driver = webdriver.Chrome(service=service, options=options)
+        else:
+            # Если remote_url есть - использование его
+            raw_driver = webdriver.Remote(
+                command_executor=remote_url, options=options
+            )
+            
+    except ImportError:
+        # Если webdriver_manager - подключение к удаленному браузеру.
+        # Если переменная пустая - стандартный адрес контейнера в Docker
+        url = remote_url or "http://server:4444/wd/hub"
+        raw_driver = webdriver.Remote(command_executor=url, options=options)
     
     # Замедление драйвера
     driver = EventFiringWebDriver(raw_driver, SlowMotionListener())
@@ -68,5 +88,3 @@ def auth_driver(driver, base_url):
     driver.get(base_url)
     login_page.login("test", "sadsads")
     return driver
-
-
