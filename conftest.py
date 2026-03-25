@@ -65,6 +65,6 @@ def base_url():
 def auth_driver(driver, base_url):
     login_page = LoginPage(driver)
     driver.get(base_url)
-    login_page.login("dmin@google.com", "admin1234567")
+    login_page.login("admin@google.com", "admin1234567")
     return driver
 
