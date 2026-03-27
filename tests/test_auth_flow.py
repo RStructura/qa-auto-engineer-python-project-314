@@ -1,4 +1,4 @@
-import time
+# import time
 
 import pytest
 from selenium.webdriver.common.by import By
@@ -10,9 +10,15 @@ from pages.login_page import LoginPage
 def test_login_page_elements(driver, base_url):
     driver.get(base_url)
     page = LoginPage(driver)
-    time.sleep(3)
+
+    # Ожидание загрузки заголовка
+    page.wait.until(lambda d: "Task manager" in d.title)
+
     # Проверка наличия элементов
-    assert "Task manager" in driver.title
+    assert "Task manager" in driver.title, "Заголовок страницы неверный"
+    assert page.is_login_button_visible(), "Кнопка логина не отображается"
+    assert page.is_username_input_visible(), "Поле Username не отображается"
+    assert page.is_password_input_visible(), "Поле Password не отображается"
     assert page.is_login_button_visible(), "Кнопка логина не отображается"
 
 

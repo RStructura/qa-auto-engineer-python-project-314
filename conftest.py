@@ -59,7 +59,7 @@ class SlowMotionListener(AbstractEventListener):
 # Фикстура: Базовый URL
 @pytest.fixture
 def base_url():
-    return os.getenv('APP_BASE_URL', 'http://server:5173')
+    return os.getenv('APP_BASE_URL', 'http://localhost:5173')
 
 
 # Фикстура: Авторизация
