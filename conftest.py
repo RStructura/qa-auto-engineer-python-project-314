@@ -22,15 +22,15 @@ def driver():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
 
-    # Отключение плашки об автоматизации
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    # # Отключение плашки об автоматизации
+    # options.add_experimental_option("excludeSwitches", ["enable-automation"])
     
-    # Отключение проверки паролей и окна сохранения
-    prefs = {
-        "credentials_enable_service": False, 
-        "profile.password_manager_enabled": False
-    }
-    options.add_experimental_option("prefs", prefs)
+    # # Отключение проверки паролей и окна сохранения
+    # prefs = {
+    #     "credentials_enable_service": False, 
+    #     "profile.password_manager_enabled": False
+    # }
+    # options.add_experimental_option("prefs", prefs)
     
     # Запуск браузера
     driver = webdriver.Chrome(options=options)
@@ -58,8 +58,7 @@ def driver():
 # Фикстура: Базовый URL
 @pytest.fixture
 def base_url():
-    return os.getenv('APP_BASE_URL', 'http://127.0.0.1:5173')
-    # return os.getenv('APP_BASE_URL', 'http://localhost:5173')
+    return os.getenv('APP_BASE_URL', 'http://localhost:5173')
 
 
 # Фикстура: Авторизация
