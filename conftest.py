@@ -4,12 +4,10 @@ import time
 import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.event_firing_webdriver import (
     EventFiringWebDriver,
 )
 from selenium.webdriver.support.events import AbstractEventListener
-from webdriver_manager.chrome import ChromeDriverManager
 
 from pages.login_page import LoginPage
 
@@ -27,13 +25,14 @@ def driver():
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     
     # Отключение проверки паролей и окна сохранения
-    prefs = {"credentials_enable_service": False, 
-        "profile.password_manager_enabled": False}
+    prefs = {
+        "credentials_enable_service": False, 
+        "profile.password_manager_enabled": False
+    }
     options.add_experimental_option("prefs", prefs)
     
-    # Проверка актуальности версии браузера и его открытие
-    service = Service(ChromeDriverManager().install())
-    raw_driver = webdriver.Chrome(service=service, options=options)
+    # Запуск браузера
+    raw_driver = webdriver.Chrome(options=options)
     
     # Замедление драйвера
     driver = EventFiringWebDriver(raw_driver, SlowMotionListener())

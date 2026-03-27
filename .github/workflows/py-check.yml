@@ -25,7 +25,7 @@ jobs:
         run: make start &
 
       - name: Wait for application
-        run: sleep 20
+        run: sleep 30
 
       - name: Run linter and tests
         env:
