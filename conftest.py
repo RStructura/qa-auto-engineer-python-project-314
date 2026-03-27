@@ -61,11 +61,10 @@ def base_url():
     return os.getenv('APP_BASE_URL', 'http://localhost:5173')
 
 
-# Фикстура: Авторизация 
+# Фикстура: Авторизация
 @pytest.fixture
 def auth_driver(driver, base_url):
     driver.get(base_url)
     login_page = LoginPage(driver)
     login_page.login("admin@google.com", "admin1234567")
     return driver
-
