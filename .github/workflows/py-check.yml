@@ -29,7 +29,7 @@ jobs:
 
       - name: Run linter and tests
         env:
-          APP_BASE_URL: http://localhost:5173
+          APP_BASE_URL: http://server:5173
         run: make check
 
       - name: Generate Coverage Report
