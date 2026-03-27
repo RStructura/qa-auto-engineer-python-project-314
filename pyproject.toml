@@ -28,8 +28,7 @@ build-backend = "hatchling.build"
 packages = ["pages", "tests"]
 
 [tool.pytest.ini_options]
-testpaths = ["code/tests"]
-pythonpath = ["code"]
+testpaths = ["tests"]
 markers = [
     "smoke: quick tests to check basic functionality",
     "step_3: tests to check the functionality from step #3",
