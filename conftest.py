@@ -19,6 +19,8 @@ def driver():
 
     # Настройка виртуального окна
     options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
 
     # Отключение плашки об автоматизации
@@ -62,8 +64,8 @@ def base_url():
 # Фикстура: Авторизация
 @pytest.fixture
 def auth_driver(driver, base_url):
-    login_page = LoginPage(driver)
     driver.get(base_url)
+    login_page = LoginPage(driver)
     login_page.login("admin@google.com", "admin1234567")
     return driver
 
