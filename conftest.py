@@ -1,15 +1,14 @@
 import os
-import time
 
+# import time
 import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.event_firing_webdriver import (
-    EventFiringWebDriver,
-)
-from selenium.webdriver.support.events import AbstractEventListener
 
-from pages.login_page import LoginPage
+# from selenium.webdriver.support.event_firing_webdriver import (
+#     EventFiringWebDriver,
+# )
+# from selenium.webdriver.support.events import AbstractEventListener
 
 
 # Работа с Chrome
@@ -23,21 +22,22 @@ def driver():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
 
-    # Отключение плашки об автоматизации
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    # # Отключение плашки об автоматизации
+    # options.add_experimental_option("excludeSwitches", ["enable-automation"])
     
-    # Отключение проверки паролей и окна сохранения
-    prefs = {
-        "credentials_enable_service": False, 
-        "profile.password_manager_enabled": False
-    }
-    options.add_experimental_option("prefs", prefs)
+    # # Отключение проверки паролей и окна сохранения
+    # prefs = {
+    #     "credentials_enable_service": False, 
+    #     "profile.password_manager_enabled": False
+    # }
+    # options.add_experimental_option("prefs", prefs)
     
     # Запуск браузера
-    raw_driver = webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(options=options)
+    # raw_driver = webdriver.Chrome(options=options)
     
     # Замедление драйвера
-    driver = EventFiringWebDriver(raw_driver, SlowMotionListener())
+    # driver = EventFiringWebDriver(raw_driver, SlowMotionListener())
     
     # Завершение
     yield driver
@@ -45,25 +45,27 @@ def driver():
 
 
 # Замедление выполнения тестов
-class SlowMotionListener(AbstractEventListener):
-    # Пауза после каждого клика
-    def after_click(self, element, driver):
-        time.sleep(0.3)
+# class SlowMotionListener(AbstractEventListener):
+#     # Пауза после каждого клика
+#     def after_click(self, element, driver):
+#         time.sleep(0.3)
     
-    # Пауза после каждого ввода текста
-    def after_change_value_of(self, element, driver):
-        time.sleep(0.3)
+#     # Пауза после каждого ввода текста
+#     def after_change_value_of(self, element, driver):
+#         time.sleep(0.3)
 
 
 # Фикстура: Базовый URL
 @pytest.fixture
 def base_url():
-    return os.getenv('APP_BASE_URL', 'http://localhost:5173')
+    return os.getenv('APP_BASE_URL', 'http://127.0.0.1:5173')
+    # return os.getenv('APP_BASE_URL', 'http://localhost:5173')
 
 
 # Фикстура: Авторизация
 @pytest.fixture
 def auth_driver(driver, base_url):
+    from pages.login_page import LoginPage
     driver.get(base_url)
     login_page = LoginPage(driver)
     login_page.login("admin@google.com", "admin1234567")
