@@ -1,3 +1,5 @@
+import time
+
 import pytest
 from selenium.webdriver.common.by import By
 
@@ -8,6 +10,7 @@ from pages.login_page import LoginPage
 def test_login_page_elements(driver, base_url):
     driver.get(base_url)
     page = LoginPage(driver)
+    time.sleep(3)
     # Проверка наличия элементов
     assert "Task manager" in driver.title
     assert page.is_login_button_visible(), "Кнопка логина не отображается"

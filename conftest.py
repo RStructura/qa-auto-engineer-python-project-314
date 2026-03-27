@@ -18,7 +18,7 @@ def driver():
     options = Options()
 
     # Настройка виртуального окна
-    options.add_argument("--headless=new")
+    # options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
@@ -48,11 +48,11 @@ def driver():
 class SlowMotionListener(AbstractEventListener):
     # Пауза после каждого клика
     def after_click(self, element, driver):
-        time.sleep(0.3)
+        time.sleep(0.5)
     
     # Пауза после каждого ввода текста
     def after_change_value_of(self, element, driver):
-        time.sleep(0.3)
+        time.sleep(0.5)
 
 
 # Фикстура: Базовый URL
