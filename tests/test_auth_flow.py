@@ -8,8 +8,8 @@ from pages.login_page import LoginPage
 
 @pytest.mark.smoke
 def test_login_page_elements(driver, base_url):
-    driver.get(base_url)
     page = LoginPage(driver)
+    driver.get(base_url)
 
     # Ожидание загрузки заголовка
     page.wait.until(lambda d: "Task manager" in d.title)
@@ -20,6 +20,7 @@ def test_login_page_elements(driver, base_url):
     assert page.is_username_input_visible(), "Поле Username не отображается"
     assert page.is_password_input_visible(), "Поле Password не отображается"
     assert page.is_login_button_visible(), "Кнопка логина не отображается"
+    print("\nУспех! Все основные элементы отображаются корректно")
 
 
 @pytest.mark.step_3
