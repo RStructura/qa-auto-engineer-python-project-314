@@ -4,7 +4,7 @@ install:
 start:
 	docker run --rm -p 5173:5173 hexletprojects/qa_auto_python_testing_kanban_board_project_ru_app
 
-export APP_BASE_URL=http://localhost:5173
+# export APP_BASE_URL=http://localhost:5173
 
 check:
 	$(MAKE) lint
@@ -114,4 +114,3 @@ test_step7_dnd:
 
 test_step7_delete:
 	uv run pytest -k step_7_deleteTasks -sv --tb=short
-
