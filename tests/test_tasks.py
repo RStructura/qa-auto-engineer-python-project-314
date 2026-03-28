@@ -21,6 +21,7 @@ def test_view_tasks(auth_driver):
     # Проверка наличия задач на доске
     count = page.get_tasks_count()
     assert count > 0, "Задачи не отображаются на канбан-доске"
+
     print(f"\nУспех! Канбан-доска загружена. Найдено задач: {count}")
 
 
@@ -29,20 +30,29 @@ def test_filter_tasks(auth_driver):
     page = TasksPage(auth_driver)
     page.open_tasks()
 
+    initial_count = page.get_tasks_count()
+    
+    assert initial_count > 0, "На доске нет задач до фильтрации"
+
     # Выбор фильтров
     page.select_filter("assignee_id", "john@google.com")
     page.select_filter("status_id", "Published")
-    page.select_filter("label_id", "feature")
+    page.select_filter("label_id", "critical")
     time.sleep(1)
-    
+
+    filtered_count = page.get_tasks_count()
+    assert filtered_count > 0, "После фильтрации не найдено задач"
+    assert filtered_count < initial_count, "Фильтры не сузили список задач"
+
     # Проверка выбора фильтров
-    page_context = page.get_page_context()
-    assert "john@google.com" in page_context.lower()
-    assert "Published" in page_context
-    assert "feature" in page_context.lower()
+    page_context = page.get_page_context().lower()
+    assert "john@google.com" in page_context
+    assert "published" in page_context
+    assert "critical" in page_context
     
     # Проверка загрузки задач
     count = page.get_tasks_count()
+
     print(f"\nУспех! Фильтры работают. Найдено задач: {count}")
 
 
@@ -85,6 +95,7 @@ def test_create_new_task(auth_driver):
     assert final_count == initial_count + 1, (
         f"Ожидали {initial_count + 1} задач, но нашли {final_count}"
     )
+
     print(
         f"\nУспех! Было задач: {initial_count}, стало: {final_count}. "
         f"Карточка '{test_title}' появилась на доске."
@@ -184,13 +195,16 @@ def test_delete_task_by_show(auth_driver):
     # Выбор существующей задачи
     task_id = 2
     page.open_task_delete(task_id)   
+
     # Удаление
     page.delete_task()
 
     # Подсчет количества задач
     final_count = page.get_tasks_count()
+
     assert final_count == initial_count - 1, (
         f"Ожидали {initial_count - 1} задач, но нашли {final_count}")
+
     print(
         f"\nУспех! Было задач: {initial_count}, стало: {final_count}. "
         f"Карточка с ID = '{task_id}' удалена с доски."

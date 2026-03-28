@@ -29,6 +29,14 @@ class StatusesPage:
         except NoSuchElementException:
             return ""
 
+    def is_status_present(self, name):
+        elements = self.driver.find_elements(
+            By.XPATH,
+            f"//td[contains(@class, 'column-name')"
+            f" and normalize-space()='{name}']"
+        )
+        return len(elements) > 0
+
 
 # РАБОТА СО СПИСКОМ
     def open_first_status(self):

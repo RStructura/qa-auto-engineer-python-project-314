@@ -28,6 +28,14 @@ class UsersPage:
         except NoSuchElementException:
             return ""
 
+    def is_user_present(self, email):
+        elements = self.driver.find_elements(
+            By.XPATH,
+            f"//td[contains(@class, 'column-email')"
+            f"and normalize-space()='{email}']"
+        )
+        return len(elements) > 0
+
 
 # РАБОТА СО СПИСКОМ
     def open_first_user(self):
