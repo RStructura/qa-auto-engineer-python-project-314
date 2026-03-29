@@ -1,4 +1,3 @@
-import random
 import time
 
 import pytest
@@ -6,14 +5,13 @@ import pytest
 from pages.tasks_page import TasksPage
 
 
-# Просмотр и фильтрация | Откройте список задач...
 @pytest.mark.step_7_viewBoard
 def test_view_tasks(auth_driver):
-    # Авторизация и переход на страницу
+    # Авторизация и переход на страницу tasks
     page = TasksPage(auth_driver)
     page.open_tasks()
 
-    # Проверка видимости и названий фильтров
+    # Проверка наличия фильтров на странице
     assert page.verify_filters_visible(), (
         "Фильтры на странице Tasks не загрузились"
     )
@@ -27,137 +25,180 @@ def test_view_tasks(auth_driver):
 
 @pytest.mark.step_7_filtersTasks
 def test_filter_tasks(auth_driver):
+    # Авторизация и переход на страницу tasks
     page = TasksPage(auth_driver)
     page.open_tasks()
 
-    initial_count = page.get_tasks_count()
-    
+    # Фиксация исходного набора id задач до фильтрации
+    initial_ids = set(page.get_all_task_ids())
+    initial_count = len(initial_ids)
+
     assert initial_count > 0, "На доске нет задач до фильтрации"
 
-    # Выбор фильтров
+    # Применение 3 фильтра
     page.select_filter("assignee_id", "john@google.com")
     page.select_filter("status_id", "Published")
     page.select_filter("label_id", "critical")
     time.sleep(1)
 
-    filtered_count = page.get_tasks_count()
-    assert filtered_count > 0, "После фильтрации не найдено задач"
-    assert filtered_count < initial_count, "Фильтры не сузили список задач"
+    # Сбор набора id после фильтрации
+    filtered_ids = set(page.get_all_task_ids())
+    filtered_count = len(filtered_ids)
 
-    # Проверка выбора фильтров
-    page_context = page.get_page_context().lower()
-    assert "john@google.com" in page_context
-    assert "published" in page_context
-    assert "critical" in page_context
-    
-    # Проверка загрузки задач
-    count = page.get_tasks_count()
+    # Проверка, что после фильтрации:
+    # 1) задачи остались
+    # 2) набор задач изменился
+    # 3) количество стало меньше
+    assert filtered_count > 0, "После фильтрации задач нет"
+    assert filtered_ids != initial_ids, "Фильтрация не изменила набор задач"
+    assert filtered_count < initial_count, "Фильтры не сузили выборку"
 
-    print(f"\nУспех! Фильтры работают. Найдено задач: {count}")
+    # Проверка фильтра по статусу:
+    # после фильтрации все видимые задачи должны лежать только в Published
+    published_ids = set(page.get_task_ids_in_column("Published"))
+    assert filtered_ids == published_ids, (
+        "После фильтра по статусу видны не только Published"
+    )
+
+    # Доп. проверка одной из отфильтрованных задач через Show + assignee, label
+    first_task_id = next(iter(filtered_ids))
+    page.open_task_show(first_task_id)
+
+    details = page.get_current_page_text()
+    assert "john@google.com" in details
+    assert "critical" in details
+
+    print(
+        f"\nУспех! Фильтры работают. "
+        f"Было задач: {initial_count}, стало: {filtered_count}"
+    )
 
 
-# Создание задачи | Проверьте, что форма создания отображается корректно...
 @pytest.mark.step_7_createTasks
 def test_create_new_task(auth_driver):
+    # Авторизация и переход на страницу tasks
     page = TasksPage(auth_driver)
     page.open_tasks()
-    
-    # Создание переменных для проверки количества задач
-    initial_count = page.get_tasks_count()
-    next_num = page.get_next_task_number()
 
-    # Создание переменных для генерации данных
+    # Сохранение исходного количества задач
+    initial_count = page.get_tasks_count()
+
+    # Генерация уникальных данных новой задачи
+    next_num = page.get_next_task_number()
     test_title = f"Task {next_num}"
     test_content = f"Description of task {next_num}"
 
-    # Данные для задачи:
+    # Создание задачи
     page.create_task(
         assignee="emily@example.com",
         title=test_title,
         content=test_content,
         status="Draft",
-        labels=["task", "feature"]
+        labels=["task", "feature"],
     )
 
-    # Пауза для проверки
-    time.sleep(3)
+    # Пауза для обработки UI
+    time.sleep(2)
 
-    # Переход с success экрана на страницу Tasks
+    # Возвращение на доску
     page.open_tasks()
 
-    # Проверка появления новой задачи в списке
-    assert test_title in page.get_page_context(), (
-        f"Задача {test_title} не найдена!"
-    )
-
-    # Подсчет количества задач
+    # Проверка количества задач
     final_count = page.get_tasks_count()
     assert final_count == initial_count + 1, (
         f"Ожидали {initial_count + 1} задач, но нашли {final_count}"
     )
 
+    # Поиск новой задачи по title
+    task_id = page.find_task_id_by_title(test_title)
+    assert task_id is not None, f"Задача {test_title} не найдена"
+
+    # Проверка статуса через положение задачи в колонке
+    assert page.is_task_in_column(task_id, "Draft"), (
+        "Новая задача не попала в колонку Draft"
+    )
+
+    # Проверка через доску: title + content
+    card_text = page.get_task_text(task_id)
+    assert test_title.lower() in card_text
+    assert test_content.lower() in card_text
+
+    # Проверка через show-страницу: assignee + labels
+    page.open_task_show(task_id)
+    details = page.get_current_page_text()
+
+    assert "emily@example.com" in details
+    assert test_title.lower() in details
+    assert test_content.lower() in details
+    assert "task" in details
+    assert "feature" in details
+
     print(
         f"\nУспех! Было задач: {initial_count}, стало: {final_count}. "
-        f"Карточка '{test_title}' появилась на доске."
+        f"Задача '{test_title}' создана корректно."
     )
 
 
-# Редактирование | Обновите данные существующей задачи...
 @pytest.mark.step_7_editTasks
 def test_edit_task(auth_driver):
+    # Авторизация и переход на страницу tasks
     page = TasksPage(auth_driver)
     page.open_tasks()
 
-    # Выбор существующей задачи
+    # Данные существующей задачи
     task_id = 2
     page.open_task_edit(task_id)
 
-    # Данные для обновления
+    # Новые данные
     new_assignee = "peter@outlook.com"
     new_title = "Task 2 (updated)"
     new_content = "Description of task 2 (updated)"
     new_status = "Draft"
     old_labels = ["bug", "feature"]
-    new_labels = ["task", "enhancement"] 
+    new_labels = ["task", "enhancement"]
 
-    # Редактирование
+    # Обновление
     page.update_task_fields(
         title=new_title,
         content=new_content,
         assignee=new_assignee,
         status=new_status,
         old_labels=old_labels,
-        new_labels=new_labels
+        new_labels=new_labels,
     )
 
-    # Проверка обновления данных
-    new_label_random = random.choice(new_labels)
-    context = page.get_page_context()
-    
-    assert new_title in context, f"Новый заголовок '{new_title}' не найден!"
-    assert new_content in context, f"Новое описание '{new_content}' не найдено!"
+    time.sleep(1)
 
-    # Проверка через фильтрацию
-    page.select_filter("assignee_id", new_assignee)
-    page.select_filter("status_id", new_status)
-    page.select_filter("label_id", new_label_random)
-    
-    # Получение обновленного контекста
-    page_context = page.get_page_context()
-    
-    assert new_assignee in page_context.lower()
-    assert new_status in page_context
-    assert new_label_random in page_context.lower()
+    # Возвращение на доску
+    page.open_tasks()
+
+    # Проверка статуса через колонку
+    assert page.is_task_in_column(task_id, "Draft"), (
+        "После редактирования задача не попала в Draft"
+    )
+
+    # Проверка через доску: title + content
+    card_text = page.get_task_text(task_id)
+    assert new_title.lower() in card_text
+    assert new_content.lower() in card_text
+
+    # Проверка через show-страницу: assignee + labels
+    page.open_task_show(task_id)
+    details = page.get_current_page_text()
+
+    assert new_assignee in details
+    assert new_title.lower() in details
+    assert new_content.lower() in details
+    assert "enhancement" in details
 
     print(
-        f"\nУспех! Задача с ID = {task_id} успешно обновлена. "
-        "Новые данные подтверждены."
+        f"\nУспех! Задача с ID = {task_id} успешно обновлена."
     )
 
 
-# Перемещение между колонками | Перетащите карточку в другой статус...
 @pytest.mark.step_7_dragAndDropTasks
 def test_drag_and_drop_between_columns(auth_driver):
+    # Авторизация и переход на страницу tasks
     page = TasksPage(auth_driver)
     page.open_tasks()
 
@@ -165,47 +206,58 @@ def test_drag_and_drop_between_columns(auth_driver):
     start_status = "To Review"
     target_status = "Draft"
 
-    # Проверка стартового статуса задачи
+    # Проверка наличия задачи в нужной колонке
     assert page.is_task_in_column(task_id, start_status), (
-        f"Ошибка: Задача {task_id} должна быть в {start_status} "
-        "перед началом теста!"
+        f"Ошибка: задача {task_id} должна быть в {start_status} "
+        "перед началом теста"
     )
 
-    # Перемещение
+    # Днд карточки
     page.move_task_to_status(task_id, target_status)
 
-    # Проверка перемещения в целевой статус
-    assert page.is_task_in_column(task_id, target_status), \
-        f"Задача {task_id} не перемещена в статус {target_status}!"
+    # Проверка смены статуса задачи
+    assert page.is_task_in_column(task_id, target_status), (
+        f"Задача {task_id} не перемещена в статус {target_status}"
+    )
 
-    print(f"\nУспех! Задача с ID = {task_id} "
-        f"перемещена из статуса '{start_status}' в '{target_status}'."
+    print(
+        f"\nУспех! Задача с ID = {task_id} "
+        f"перемещена из '{start_status}' в '{target_status}'."
     )
 
 
-# Удаление | Удалите задачу и убедитесь...
 @pytest.mark.step_7_deleteTasks
 def test_delete_task_by_show(auth_driver):
+    # Авторизация и переход на страницу tasks
     page = TasksPage(auth_driver)
     page.open_tasks()
 
-    # Создание переменных для проверки количества задач
+    # Сохранение исходного количества задач
     initial_count = page.get_tasks_count()
 
-    # Выбор существующей задачи
+    # Открытие существующей задачи через show
     task_id = 2
-    page.open_task_delete(task_id)   
+    assert page.is_task_present(task_id), f"Задача {task_id} не найдена"
+
+    page.open_task_delete(task_id)
 
     # Удаление
     page.delete_task()
+    time.sleep(1)
 
-    # Подсчет количества задач
+    # Обновление страницы на всякий случай
+    page.open_tasks()
+
+    # Проверка количества и отсутствие задачи
     final_count = page.get_tasks_count()
-
     assert final_count == initial_count - 1, (
-        f"Ожидали {initial_count - 1} задач, но нашли {final_count}")
+        f"Ожидали {initial_count - 1} задач, но нашли {final_count}"
+    )
+    assert not page.is_task_present(task_id), (
+        f"Карточка с ID = {task_id} не была удалена"
+    )
 
     print(
         f"\nУспех! Было задач: {initial_count}, стало: {final_count}. "
-        f"Карточка с ID = '{task_id}' удалена с доски."
+        f"Карточка с ID = {task_id} удалена."
     )

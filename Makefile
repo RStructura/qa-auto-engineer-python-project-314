@@ -25,25 +25,26 @@ test-coverage:
 
 # ---------------------------------------
 
+PYTEST_DEBUG_FLAGS = -vv -ra -s \
+    --tb=long --showlocals --durations=10 --maxfail=1
+
+# HEADLESS=0 — браузер с окном / 1 — браузер без окна
+# SLOWMO=0 — обычная скорость / 1 — медленные клики и ввод
+
 debug_all:
-	uv run pytest tests/ -vv -ra -s \
-	    --tb=long --showlocals --durations=10 --maxfail=1
+	HEADLESS=0 SLOWMO=1 uv run pytest tests/ $(PYTEST_DEBUG_FLAGS)
 
 debug_users:
-	uv run pytest tests/test_users.py -vv -ra -s \
-	    --tb=long --showlocals --durations=10 --maxfail=1
+	HEADLESS=0 SLOWMO=1 uv run pytest tests/test_users.py $(PYTEST_DEBUG_FLAGS)
 
 debug_statuses:
-	uv run pytest tests/test_statuses.py -vv -ra -s \
-	    --tb=long --showlocals --durations=10 --maxfail=1
+	HEADLESS=0 SLOWMO=1 uv run pytest tests/test_statuses.py $(PYTEST_DEBUG_FLAGS)
 
 debug_labels:
-	uv run pytest tests/test_labels.py -vv -ra -s \
-	    --tb=long --showlocals --durations=10 --maxfail=1
+	HEADLESS=0 SLOWMO=1 uv run pytest tests/test_labels.py $(PYTEST_DEBUG_FLAGS)
 
 debug_tasks:
-	uv run pytest tests/test_tasks.py -vv -ra -s \
-	    --tb=long --showlocals --durations=10 --maxfail=1
+	HEADLESS=0 SLOWMO=1 uv run pytest tests/test_tasks.py $(PYTEST_DEBUG_FLAGS)
 
 # ---------------------------------------
 

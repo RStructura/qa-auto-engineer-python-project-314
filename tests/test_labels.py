@@ -49,7 +49,7 @@ def test_create_label(auth_driver):
     page.open_labels()
 
     # Провека изменений
-    assert test_name in auth_driver.page_source
+    assert page.is_label_present(test_name)
     assert page.get_labels_count() == initial_count + 1
 
     print(
@@ -77,7 +77,7 @@ def test_edit_label(auth_driver):
     # Проверка изменений
     time.sleep(1)
     page.open_labels()
-    assert new_name in auth_driver.page_source
+    assert page.is_label_present(new_name)
 
     print("\nУспех! Редактирование и валидация проверены.")
 

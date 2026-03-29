@@ -28,6 +28,15 @@ class UsersPage:
         except NoSuchElementException:
             return ""
 
+    # Проверка для edit, create и delete
+    def get_user_row_text(self, email):
+        row = self.driver.find_element(
+            By.XPATH,
+            "//tr[.//td[contains(@class, 'column-email') "
+            f"and normalize-space()='{email}']]"
+        )
+        return row.text
+
     def is_user_present(self, email):
         elements = self.driver.find_elements(
             By.XPATH,

@@ -105,7 +105,9 @@ def test_edit_user_with_validation(auth_driver):
     time.sleep(1)
     page.open_users()
 
-    assert new_first in auth_driver.page_source
+    row_text = page.get_user_row_text("correct@gmail.com")
+    assert "Name_updated" in row_text
+    assert "Lastname_update" in row_text
 
     print("\nУспех! Редактирование и валидация проверены.")
 
@@ -126,7 +128,7 @@ def test_delete_user_via_checkbox(auth_driver):
     time.sleep(1)
     page.open_users()
 
-    assert email_to_delete not in auth_driver.page_source
+    assert not page.is_user_present(email_to_delete)
     assert page.get_users_count() == initial_count - 1
 
     print(
@@ -151,7 +153,7 @@ def test_delete_user_via_edit(auth_driver):
     time.sleep(1)
     page.open_users()
 
-    assert email_to_delete not in auth_driver.page_source
+    assert not page.is_user_present(email_to_delete)
     assert page.get_users_count() == initial_count - 1
 
     print(

@@ -56,7 +56,7 @@ def test_create_status(auth_driver):
     page.open_statuses()
 
     # Провека изменений
-    assert test_name in auth_driver.page_source
+    assert page.is_status_present(test_name)
     assert page.get_statuses_count() == initial_count + 1
 
     print(
@@ -85,7 +85,7 @@ def test_edit_status(auth_driver):
     # Проверка изменений
     time.sleep(1)
     page.open_statuses()
-    assert new_name in auth_driver.page_source
+    assert page.is_status_present(new_name)
 
     print("\nУспех! Редактирование и валидация проверены.")
 
@@ -106,7 +106,7 @@ def test_delete_status_via_checkbox(auth_driver):
     time.sleep(1)
     page.open_statuses()
 
-    assert name_to_del not in auth_driver.page_source
+    assert not page.is_status_present(name_to_del)
     assert page.get_statuses_count() == initial_count - 1
 
     print(
@@ -131,7 +131,7 @@ def test_delete_status_via_edit(auth_driver):
     time.sleep(1)
     page.open_statuses()
 
-    assert name_to_del not in auth_driver.page_source
+    assert not page.is_status_present(name_to_del)
     assert page.get_statuses_count() == initial_count - 1
 
     print(

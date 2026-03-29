@@ -28,6 +28,15 @@ class LabelsPage:
         except NoSuchElementException:
             return ""
 
+    # Проверка для edit, create и delete
+    def get_label_row_text(self, name):
+        row = self.driver.find_element(
+            By.XPATH,
+            "//tr[.//td[contains(@class, 'column-name') "
+            f"and normalize-space()='{name}']]"
+        )
+        return row.text
+
     def is_label_present(self, name):
         elements = self.driver.find_elements(
             By.XPATH,
