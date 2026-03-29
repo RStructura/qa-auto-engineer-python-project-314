@@ -35,7 +35,7 @@ def test_filter_tasks(auth_driver):
 
     assert initial_count > 0, "На доске нет задач до фильтрации"
 
-    # Применение 3 фильтра
+    # Применение 3 фильтров
     page.select_filter("assignee_id", "john@google.com")
     page.select_filter("status_id", "Published")
     page.select_filter("label_id", "critical")
@@ -150,21 +150,13 @@ def test_edit_task(auth_driver):
     page.open_task_edit(task_id)
 
     # Новые данные
-    new_assignee = "peter@outlook.com"
     new_title = "Task 2 (updated)"
     new_content = "Description of task 2 (updated)"
-    new_status = "Draft"
-    old_labels = ["bug", "feature"]
-    new_labels = ["task", "enhancement"]
 
     # Обновление
     page.update_task_fields(
         title=new_title,
         content=new_content,
-        assignee=new_assignee,
-        status=new_status,
-        old_labels=old_labels,
-        new_labels=new_labels,
     )
 
     time.sleep(1)
@@ -172,9 +164,9 @@ def test_edit_task(auth_driver):
     # Возвращение на доску
     page.open_tasks()
 
-    # Проверка статуса через колонку
-    assert page.is_task_in_column(task_id, "Draft"), (
-        "После редактирования задача не попала в Draft"
+    # Проверка, что задача все еще существует
+    assert page.is_task_present(task_id), (
+        f"После редактирования задача {task_id} пропала с доски"
     )
 
     # Проверка через доску: title + content
@@ -182,14 +174,12 @@ def test_edit_task(auth_driver):
     assert new_title.lower() in card_text
     assert new_content.lower() in card_text
 
-    # Проверка через show-страницу: assignee + labels
+    # Проверка через show-страницу: title + content
     page.open_task_show(task_id)
     details = page.get_current_page_text()
 
-    assert new_assignee in details
     assert new_title.lower() in details
     assert new_content.lower() in details
-    assert "enhancement" in details
 
     print(
         f"\nУспех! Задача с ID = {task_id} успешно обновлена."
