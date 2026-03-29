@@ -25,6 +25,28 @@ test-coverage:
 
 # ---------------------------------------
 
+debug_all:
+	uv run pytest tests/ -vv -ra -s \
+	    --tb=long --showlocals --durations=10 --maxfail=1
+
+debug_users:
+	uv run pytest tests/test_users.py -vv -ra -s \
+	    --tb=long --showlocals --durations=10 --maxfail=1
+
+debug_statuses:
+	uv run pytest tests/test_statuses.py -vv -ra -s \
+	    --tb=long --showlocals --durations=10 --maxfail=1
+
+debug_labels:
+	uv run pytest tests/test_labels.py -vv -ra -s \
+	    --tb=long --showlocals --durations=10 --maxfail=1
+
+debug_tasks:
+	uv run pytest tests/test_tasks.py -vv -ra -s \
+	    --tb=long --showlocals --durations=10 --maxfail=1
+
+# ---------------------------------------
+
 smoke_test:
 	uv run pytest -k smoke -sv --tb=short
 
@@ -35,7 +57,7 @@ auth_test:
 
 # ---------------------------------------
 
-test_step4:
+test_step4_users:
 	uv run pytest tests/test_users.py -sv --tb=short
 
 test_step4_view:
@@ -55,7 +77,7 @@ test_step4_deleteAll:
 
 # ---------------------------------------
 
-test_step5:
+test_step5_statuses:
 	uv run pytest tests/test_statuses.py -sv --tb=short
 
 test_step5_view:
@@ -75,7 +97,7 @@ test_step5_deleteAll:
 
 # ---------------------------------------
 
-test_step6:
+test_step6_labels:
 	uv run pytest tests/test_labels.py -sv --tb=short
 
 test_step6_view:
@@ -95,7 +117,7 @@ test_step6_deleteAll:
 
 # ---------------------------------------
 
-test_step7:
+test_step7_tasks:
 	uv run pytest tests/test_tasks.py -sv --tb=short
 
 test_step7_view:
@@ -115,3 +137,4 @@ test_step7_dnd:
 
 test_step7_delete:
 	uv run pytest -k step_7_deleteTasks -sv --tb=short
+

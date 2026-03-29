@@ -1,5 +1,6 @@
 import os
 import time
+from pathlib import Path
 
 import pytest
 from selenium import webdriver
@@ -23,6 +24,7 @@ def driver():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
+    options.set_capability("goog:loggingPrefs", {"browser": "ALL"})
 
     # Отключение плашки об автоматизации
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
@@ -36,9 +38,16 @@ def driver():
     
     # Запуск браузера
     raw_driver = webdriver.Chrome(options=options)
-    
+
     # Замедление драйвера
-    driver = EventFiringWebDriver(raw_driver, SlowMotionListener())
+    SLOWMO_ENABLED = os.getenv("SLOWMO", "0") == "1"
+    if SLOWMO_ENABLED:
+        driver = EventFiringWebDriver(raw_driver, SlowMotionListener())
+    else:
+        driver = raw_driver
+
+    # Замедление драйвера
+    # driver = EventFiringWebDriver(raw_driver, SlowMotionListener())
     
     # Завершение
     yield driver
@@ -49,11 +58,11 @@ def driver():
 class SlowMotionListener(AbstractEventListener):
     # Пауза после каждого клика
     def after_click(self, element, driver):
-        time.sleep(0.5)
+        time.sleep(0.3)
     
     # Пауза после каждого ввода текста
     def after_change_value_of(self, element, driver):
-        time.sleep(0.5)
+        time.sleep(0.3)
 
 
 # Фикстура: Базовый URL
@@ -78,6 +87,7 @@ def auth_driver(driver, base_url):
     return driver
 
 
+# Маркеры проверок
 def pytest_configure(config):
     markers = [
         "smoke: smoke test",
@@ -110,3 +120,42 @@ def pytest_configure(config):
     ]
     for marker in markers:
         config.addinivalue_line("markers", marker)
+
+
+# Артефакты
+ARTIFACTS_DIR = Path("artifacts")
+ARTIFACTS_DIR.mkdir(exist_ok=True)
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    report = outcome.get_result()
+
+    setattr(item, f"rep_{report.when}", report)
+
+    if report.when != "call" or not report.failed:
+        return
+
+    driver = item.funcargs.get("driver") or item.funcargs.get("auth_driver")
+    if driver is None:
+        return
+
+    test_dir = ARTIFACTS_DIR / item.name
+    test_dir.mkdir(parents=True, exist_ok=True)
+
+    driver.save_screenshot(str(test_dir / "failure.png"))
+
+    html_path = test_dir / "page_source.html"
+    html_path.write_text(driver.page_source, encoding="utf-8")
+
+    try:
+        logs = driver.get_log("browser")
+    except Exception:
+        logs = []
+
+    browser_log_path = test_dir / "browser.log"
+    browser_log_path.write_text(
+        "\n".join(str(entry) for entry in logs),
+        encoding="utf-8",
+    )
