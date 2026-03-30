@@ -1,6 +1,11 @@
 import time
 
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import (
+    ElementClickInterceptedException,
+    NoSuchElementException,
+    StaleElementReferenceException,
+    TimeoutException,
+)
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -143,6 +148,20 @@ class TasksPage:
             f'[data-rfd-draggable-id="{task_id}"]',
         )
         return element.text.lower()
+    
+    def wait_for_task_text(self, task_id, text):
+        """
+        Ожидание появления текста в задаче для edit/create.
+        """
+        locator = (
+            By.CSS_SELECTOR,
+            f'[data-rfd-draggable-id="{task_id}"]',
+        )
+
+        self.wait.until(
+            lambda d: text.lower()
+            in d.find_element(*locator).text.lower()
+        )
 
     def get_task_ids_in_column(self, status_name):
         """
@@ -177,6 +196,80 @@ class TasksPage:
             return False
 
     # -----------------------------------------------------------------
+    # ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ДЛЯ SELECT / FILTER
+    # -----------------------------------------------------------------
+
+    def _get_combobox_by_input_name(self, input_name):
+        """
+        Поиск combobox рядом со скрытым input для фильтров и форм create/edit.
+        """
+        input_element = self.wait.until(
+            EC.presence_of_element_located((By.NAME, input_name))
+        )
+
+        return input_element.find_element(
+            By.XPATH,
+            "../div[@role='combobox']",
+        )
+
+    def _click_visible_option(self, text):
+        """
+        Рефакторинг для CI т.к. option.click() иногда падает с
+        ElementClickInterceptedException из-за анимаций/оверлеев MUI.
+        """
+        option_xpath = (
+            f"//li[@role='option' and normalize-space()='{text}']"
+        )
+
+        self.wait.until(
+            lambda d: any(
+                element.is_displayed()
+                for element in d.find_elements(By.XPATH, option_xpath)
+            )
+        )
+
+        last_error = None
+
+        for _ in range(3):
+            options = self.driver.find_elements(By.XPATH, option_xpath)
+            visible_option = next(
+                (element for element in options if element.is_displayed()),
+                None,
+            )
+
+            if visible_option is None:
+                continue
+
+            self.driver.execute_script(
+                "arguments[0].scrollIntoView({block: 'center'});",
+                visible_option,
+            )
+
+            try:
+                visible_option.click()
+                time.sleep(0.3)
+                return
+            except (
+                ElementClickInterceptedException,
+                StaleElementReferenceException,
+                TimeoutException,
+            ) as error:
+                last_error = error
+                try:
+                    self.driver.execute_script(
+                        "arguments[0].click();",
+                        visible_option,
+                    )
+                    time.sleep(0.3)
+                    return
+                except Exception as js_error:
+                    last_error = js_error
+
+        if last_error:
+            raise last_error
+
+        raise NoSuchElementException(f"Не найдена опция: {text}")
+    # -----------------------------------------------------------------
     # ФИЛЬТРЫ
     # -----------------------------------------------------------------
 
@@ -185,24 +278,12 @@ class TasksPage:
         Выбор значений фильтров
         input_name: assignee_id / status_id / label_id
         """
-        input_element = self.wait.until(
-            EC.presence_of_element_located((By.NAME, input_name))
-        )
-
-        combobox = input_element.find_element(
-            By.XPATH,
-            "../div[@role='combobox']",
-        )
+        combobox = self._get_combobox_by_input_name(input_name)
 
         self.wait.until(EC.element_to_be_clickable(combobox))
         combobox.click()
 
-        option = self.wait.until(
-            EC.element_to_be_clickable(
-                (By.XPATH, f"//li[contains(., '{value}')]")
-            )
-        )
-        option.click()
+        self._click_visible_option(value)
 
         # Пауза UI для закрытия выпадающего списка
         time.sleep(0.5)
@@ -234,27 +315,15 @@ class TasksPage:
         Выбор значений формы create/edit
         input_name: assignee_id / status_id / label_id
         """
-        input_element = self.wait.until(
-            EC.presence_of_element_located((By.NAME, input_name))
-        )
-
-        combobox = input_element.find_element(
-            By.XPATH,
-            "../div[@role='combobox']",
-        )
+        combobox = self._get_combobox_by_input_name(input_name)
 
         self.driver.execute_script(
-            "arguments[0].scrollIntoView(true);",
+            "arguments[0].scrollIntoView({block: 'center'});",
             combobox,
         )
         combobox.click()
 
-        option = self.wait.until(
-            EC.element_to_be_clickable(
-                (By.XPATH, f"//li[contains(., '{text}')]")
-            )
-        )
-        option.click()
+        self._click_visible_option(text)
 
         # Закрытие выпадающего списка
         self.driver.switch_to.active_element.send_keys(Keys.ESCAPE)

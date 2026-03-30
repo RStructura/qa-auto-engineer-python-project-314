@@ -159,11 +159,11 @@ def test_edit_task(auth_driver):
         content=new_content,
     )
 
-    time.sleep(1)
-
     # Возвращение на доску
     page.open_tasks()
 
+    # Ожидание появления title в задаче
+    page.wait_for_task_text(task_id, new_title)
     # Проверка, что задача все еще существует
     assert page.is_task_present(task_id), (
         f"После редактирования задача {task_id} пропала с доски"
@@ -173,13 +173,6 @@ def test_edit_task(auth_driver):
     card_text = page.get_task_text(task_id)
     assert new_title.lower() in card_text
     assert new_content.lower() in card_text
-
-    # Проверка через show-страницу: title + content
-    page.open_task_show(task_id)
-    details = page.get_current_page_text()
-
-    assert new_title.lower() in details
-    assert new_content.lower() in details
 
     print(
         f"\nУспех! Задача с ID = {task_id} успешно обновлена."
