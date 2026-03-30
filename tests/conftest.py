@@ -78,12 +78,13 @@ def driver():
 
 @pytest.fixture
 def base_url():
+    implementation = os.getenv("IMPLEMENTATION")
+    if implementation:
+        return f"http://{implementation}.test"
+    
     env_url = os.getenv("APP_BASE_URL")
     if env_url:
         return env_url
-
-    if os.path.exists("/.dockerenv"):
-        return "http://server"
 
     return "http://localhost:5173"
 
