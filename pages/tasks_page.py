@@ -88,9 +88,7 @@ class TasksPage:
         return self.driver.find_element(By.TAG_NAME, "body").text
 
     def get_current_page_text(self):
-        """
-        Получение текста текущей страницы в lower-case для show/edit проверок
-        """
+        """Получение текста текущей страницы в нижнем регистре."""
         return self.wait.until(
             EC.visibility_of_element_located((By.TAG_NAME, "body"))
         ).text.lower()
@@ -119,12 +117,17 @@ class TasksPage:
         ids = self.get_all_task_ids()
         return max(ids) + 1 if ids else 1
 
+    def _extract_card_lines(self, text):
+        """Нормализация строк задачи"""
+        return [line.strip() for line in text.splitlines() if line.strip()]
+
     def find_task_id_by_title(self, title):
         """Поиск id задачи по title на доске"""
         cards = self.driver.find_elements(*self.element_task)
 
         for card in cards:
-            if title in card.text:
+            lines = self._extract_card_lines(card.text)
+            if lines and lines[0] == title:
                 task_id = card.get_attribute("data-rfd-draggable-id")
                 if task_id and task_id.isdigit():
                     return int(task_id)
@@ -148,20 +151,46 @@ class TasksPage:
             f'[data-rfd-draggable-id="{task_id}"]',
         )
         return element.text.lower()
-    
-    def wait_for_task_text(self, task_id, text):
-        """
-        Ожидание появления текста в задаче для edit/create.
-        """
+
+    def get_task_title(self, task_id):
+        """Получение title с доски"""
+        element = self.driver.find_element(
+            By.CSS_SELECTOR,
+            f'[data-rfd-draggable-id="{task_id}"]',
+        )
+        lines = self._extract_card_lines(element.text)
+        return lines[0] if lines else ""
+
+    def get_task_content(self, task_id):
+        """Получение content с доски"""
+        element = self.driver.find_element(
+            By.CSS_SELECTOR,
+            f'[data-rfd-draggable-id="{task_id}"]',
+        )
+        lines = self._extract_card_lines(element.text)
+        return lines[1] if len(lines) > 1 else ""
+
+    def wait_for_task_title(self, task_id, expected_title):
+        """Ожидание появления title задачи"""
         locator = (
             By.CSS_SELECTOR,
             f'[data-rfd-draggable-id="{task_id}"]',
         )
 
-        self.wait.until(
-            lambda d: text.lower()
-            in d.find_element(*locator).text.lower()
+        def title_matches(driver):
+            element = driver.find_element(*locator)
+            lines = self._extract_card_lines(element.text)
+            return bool(lines and lines[0] == expected_title)
+
+        self.wait.until(title_matches)
+
+    def wait_for_task_absence(self, task_id):
+        """Ожидание исчезновения задачи с доски."""
+        locator = (
+            By.CSS_SELECTOR,
+            f'[data-rfd-draggable-id="{task_id}"]',
         )
+        self.wait.until(lambda d: len(d.find_elements(*locator)) == 0)
 
     def get_task_ids_in_column(self, status_name):
         """
@@ -200,9 +229,7 @@ class TasksPage:
     # -----------------------------------------------------------------
 
     def _get_combobox_by_input_name(self, input_name):
-        """
-        Поиск combobox рядом со скрытым input для фильтров и форм create/edit.
-        """
+        """Поиск combobox рядом со скрытым input для фильтров и форм"""
         input_element = self.wait.until(
             EC.presence_of_element_located((By.NAME, input_name))
         )
@@ -215,7 +242,7 @@ class TasksPage:
     def _click_visible_option(self, text):
         """
         Рефакторинг для CI т.к. option.click() иногда падает с
-        ElementClickInterceptedException из-за анимаций/оверлеев MUI.
+        ElementClickInterceptedException из-за анимаций/оверлеев MUI
         """
         option_xpath = (
             f"//li[@role='option' and normalize-space()='{text}']"
@@ -269,6 +296,7 @@ class TasksPage:
             raise last_error
 
         raise NoSuchElementException(f"Не найдена опция: {text}")
+    
     # -----------------------------------------------------------------
     # ФИЛЬТРЫ
     # -----------------------------------------------------------------

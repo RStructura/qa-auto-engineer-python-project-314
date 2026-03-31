@@ -86,6 +86,9 @@ def base_url():
     if env_url:
         return env_url
 
+    if os.path.exists("/.dockerenv"):
+        return "http://server"
+
     return "http://localhost:5173"
 
 
