@@ -36,6 +36,7 @@ class LabelsPage:
             By.CSS_SELECTOR,
             "tbody td.column-name",
         )
+        
         return [
             element.text.strip() 
             for element in elements 
