@@ -52,7 +52,7 @@ class TasksPage:
     def open_tasks(self):
         """Открытие страницы канбан-доски tasks"""
         self.wait.until(EC.element_to_be_clickable(self.url_tasks)).click()
-        # Ожидания фильтр ассайни для подтверждения загрузки доски
+        # Ожидание фильтра ассайни для подтверждения загрузки доски
         self.wait.until(
             EC.visibility_of_element_located(
                 self.filter_assignee_container
@@ -109,14 +109,6 @@ class TasksPage:
         """Количество видимых задач на доске"""
         return len(self.get_all_task_ids())
 
-    def get_next_task_number(self):
-        """
-        Получение следующего номера задачи по максимуму id на доске 
-        для генерации уникального title
-        """
-        ids = self.get_all_task_ids()
-        return max(ids) + 1 if ids else 1
-
     def _extract_card_lines(self, text):
         """Нормализация строк задачи"""
         return [line.strip() for line in text.splitlines() if line.strip()]
@@ -141,16 +133,6 @@ class TasksPage:
             f'[data-rfd-draggable-id="{task_id}"]',
         )
         return len(elements) > 0
-
-    def get_task_text(self, task_id):
-        """
-        Получение видимых элементов задачи на доске: title, content, index
-        """
-        element = self.driver.find_element(
-            By.CSS_SELECTOR,
-            f'[data-rfd-draggable-id="{task_id}"]',
-        )
-        return element.text.lower()
 
     def get_task_title(self, task_id):
         """Получение title с доски"""
@@ -195,7 +177,7 @@ class TasksPage:
     def get_task_ids_in_column(self, status_name):
         """
         Получение id видимых задач в конкретной колонке 
-        для проверки статуса через положение на доске.
+        для проверки статуса через положение на доске
         """
         elements = self.driver.find_elements(
             By.XPATH,
@@ -296,7 +278,7 @@ class TasksPage:
             raise last_error
 
         raise NoSuchElementException(f"Не найдена опция: {text}")
-    
+
     # -----------------------------------------------------------------
     # ФИЛЬТРЫ
     # -----------------------------------------------------------------

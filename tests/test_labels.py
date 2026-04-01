@@ -34,9 +34,7 @@ def create_label_and_get_state(page, prefix="Label"):
         f"Ожидали {count_before_create + 1} labels, "
         f"но нашли {count_after_create}"
     )
-    assert page.is_label_present(new_name), (
-        f"Label '{new_name}' не найден в списке"
-    )
+    assert page.is_label_present(new_name)
 
     return new_name, count_before_create, count_after_create
 
@@ -73,8 +71,8 @@ def test_create_label(auth_driver):
         prefix="CreateLabel",
     )
 
-    row_text = page.get_label_row_text(new_name)
-    assert new_name in row_text
+    row_values = page.get_label_row_values(new_name)
+    assert row_values["name"] == new_name
 
     print(
         f"\nУспех! Лейбл {new_name} появился в списке. "
@@ -113,8 +111,8 @@ def test_edit_label(auth_driver):
     # Проверка исчезновения старых значений
     assert not page.is_label_present(old_name)
 
-    row_text = page.get_label_row_text(new_name)
-    assert new_name in row_text
+    row_values = page.get_label_row_values(new_name)
+    assert row_values["name"] == new_name
 
     print("\nУспех! Редактирование и валидация проверены.")
 

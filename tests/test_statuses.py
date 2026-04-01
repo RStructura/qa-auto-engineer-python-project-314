@@ -7,10 +7,7 @@ from pages.statuses_page import StatusesPage
 
 
 def build_unique_status_payload(prefix="Status"):
-    """
-    Генерация уникальных name/slug.
-    time.time_ns() надежнее, чем int(time.time()).
-    """
+    """Генерация уникальных name/slug"""
     unique_value = time.time_ns()
     name = f"{prefix}_{unique_value}"
     slug = f"slug_{unique_value}"
@@ -19,7 +16,7 @@ def build_unique_status_payload(prefix="Status"):
 
 def create_status_and_get_state(page, prefix="Status"):
     """
-    Создает status и возвращает:
+    Создание status и возврат:
     new_name, new_slug, count_before_create, count_after_create
     """
     page.open_statuses()
@@ -40,9 +37,7 @@ def create_status_and_get_state(page, prefix="Status"):
         f"Ожидали {count_before_create + 1} statuses, "
         f"но нашли {count_after_create}"
     )
-    assert page.is_status_present(new_name), (
-        f"Status '{new_name}' не найден в списке"
-    )
+    assert page.is_status_present(new_name)
 
     return new_name, new_slug, count_before_create, count_after_create
 
@@ -86,9 +81,9 @@ def test_create_status(auth_driver):
         prefix="CreateStatus",
     )
 
-    row_text = page.get_status_row_text(new_name)
-    assert new_name in row_text
-    assert new_slug in row_text
+    row_values = page.get_status_row_values(new_name)
+    assert row_values["name"] == new_name
+    assert row_values["slug"] == new_slug
 
     print(
         f"\nУспех! Статус {new_name} появился в списке. "
@@ -126,11 +121,9 @@ def test_edit_status(auth_driver):
     assert page.is_status_present(new_name)
     assert not page.is_status_present(old_name)
 
-    row_text = page.get_status_row_text(new_name)
-    assert new_name in row_text
-    assert new_slug in row_text
-    assert old_name not in row_text
-    assert old_slug not in row_text
+    row_values = page.get_status_row_values(new_name)
+    assert row_values["name"] == new_name
+    assert row_values["slug"] == new_slug
 
     print("\nУспех! Редактирование и валидация проверены.")
 
@@ -139,12 +132,8 @@ def test_edit_status(auth_driver):
 def test_delete_status_via_checkbox(auth_driver):
     page = StatusesPage(auth_driver)
 
-    (
-        target_name, _target_slug, _, count_before_delete
-    ) = create_status_and_get_state(
-        page,
-        prefix="DeleteStatusCheckbox",
-    )
+    target_name, _target_slug, _, count_before_delete = \
+        create_status_and_get_state(page, prefix="DeleteStatusCheckbox",)
 
     page.open_statuses()
     page.select_checkbox_by_name(target_name)
@@ -168,12 +157,8 @@ def test_delete_status_via_checkbox(auth_driver):
 def test_delete_status_via_edit(auth_driver):
     page = StatusesPage(auth_driver)
 
-    (
-        target_name, _target_slug, _, count_before_delete
-    ) = create_status_and_get_state(
-        page,
-        prefix="DeleteStatusEdit",
-    )
+    target_name, _target_slug, _, count_before_delete = \
+        create_status_and_get_state(page, prefix="DeleteStatusEdit",)
 
     page.open_statuses()
     page.open_status_by_name(target_name)

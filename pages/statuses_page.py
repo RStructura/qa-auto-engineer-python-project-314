@@ -64,13 +64,25 @@ class StatusesPage:
         except NoSuchElementException:
             return ""
 
-    def get_status_row_text(self, name):
-        row = self.driver.find_element(
+    def get_status_row(self, name):
+        return self.driver.find_element(
             By.XPATH,
             "//tr[.//td[contains(@class, 'column-name') "
             f"and normalize-space()='{name}']]",
         )
-        return row.text
+
+    def get_status_row_values(self, name):
+        row = self.get_status_row(name)
+        return {
+            "name": row.find_element(
+                By.CSS_SELECTOR,
+                "td.column-name",
+            ).text.strip(),
+            "slug": row.find_element(
+                By.CSS_SELECTOR,
+                "td.column-slug",
+            ).text.strip(),
+        }
 
     def is_status_present(self, name):
         elements = self.driver.find_elements(
@@ -106,24 +118,8 @@ class StatusesPage:
     # РАБОТА СО СПИСКОМ
     # -----------------------------------------------------------------
 
-    def open_first_status(self):
-        self.driver.find_element(
-            By.CSS_SELECTOR,
-            "tbody tr:first-child",
-        ).click()
-
     def open_status_by_name(self, name):
-        self.driver.find_element(
-            By.XPATH,
-            "//tr[.//td[contains(@class, 'column-name') "
-            f"and normalize-space()='{name}']]",
-        ).click()
-
-    def select_first_checkbox(self):
-        self.driver.find_element(
-            By.CSS_SELECTOR,
-            "tbody input[type='checkbox']",
-        ).click()
+        self.get_status_row(name).click()
 
     def select_checkbox_by_name(self, name):
         checkbox = self.driver.find_element(

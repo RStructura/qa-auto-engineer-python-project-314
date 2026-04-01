@@ -16,7 +16,7 @@ class UsersPage:
     # -----------------------------------------------------------------
 
     def open_users(self):
-        """Открыть страницу users и дождаться списка или empty state."""
+        """Открытие страницы users и получение списка / empty state"""
         self.driver.find_element(By.CSS_SELECTOR, 'a[href="#/users"]').click()
 
         self.wait.until(
@@ -40,9 +40,10 @@ class UsersPage:
             By.CSS_SELECTOR,
             "tbody td.column-email",
         )
-        return [element.text.strip()
+        return [
+            element.text.strip()
             for element in elements
-                if element.text.strip()
+            if element.text.strip()
         ]
 
     def get_first_user_email(self):
@@ -60,13 +61,29 @@ class UsersPage:
         except NoSuchElementException:
             return ""
 
-    def get_user_row_text(self, email):
-        row = self.driver.find_element(
+    def get_user_row(self, email):
+        return self.driver.find_element(
             By.XPATH,
             "//tr[.//td[contains(@class, 'column-email') "
             f"and normalize-space()='{email}']]",
         )
-        return row.text
+
+    def get_user_row_values(self, email):
+        row = self.get_user_row(email)
+        return {
+            "email": row.find_element(
+                By.CSS_SELECTOR,
+                "td.column-email",
+            ).text.strip(),
+            "first": row.find_element(
+                By.CSS_SELECTOR,
+                "td.column-firstName",
+            ).text.strip(),
+            "last": row.find_element(
+                By.CSS_SELECTOR,
+                "td.column-lastName",
+            ).text.strip(),
+        }
 
     def is_user_present(self, email):
         elements = self.driver.find_elements(
@@ -102,24 +119,8 @@ class UsersPage:
     # РАБОТА СО СПИСКОМ
     # -----------------------------------------------------------------
 
-    def open_first_user(self):
-        self.driver.find_element(
-            By.CSS_SELECTOR,
-            "tbody tr:first-child",
-        ).click()
-
     def open_user_by_email(self, email):
-        self.driver.find_element(
-            By.XPATH,
-            "//tr[.//td[contains(@class, 'column-email') "
-            f"and normalize-space()='{email}']]",
-        ).click()
-
-    def select_first_checkbox(self):
-        self.driver.find_element(
-            By.CSS_SELECTOR,
-            "tbody input[type='checkbox']",
-        ).click()
+        self.get_user_row(email).click()
 
     def select_checkbox_by_email(self, email):
         checkbox = self.driver.find_element(

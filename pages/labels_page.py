@@ -40,10 +40,9 @@ class LabelsPage:
             By.CSS_SELECTOR,
             "tbody td.column-name",
         )
-        
         return [
-            element.text.strip() 
-            for element in elements 
+            element.text.strip()
+            for element in elements
             if element.text.strip()
         ]
 
@@ -62,14 +61,21 @@ class LabelsPage:
         except NoSuchElementException:
             return ""
 
-    # Проверка для edit, create и delete
-    def get_label_row_text(self, name):
-        row = self.driver.find_element(
+    def get_label_row(self, name):
+        return self.driver.find_element(
             By.XPATH,
             "//tr[.//td[contains(@class, 'column-name') "
             f"and normalize-space()='{name}']]",
         )
-        return row.text
+
+    def get_label_row_values(self, name):
+        row = self.get_label_row(name)
+        return {
+            "name": row.find_element(
+                By.CSS_SELECTOR,
+                "td.column-name",
+            ).text.strip(),
+        }
 
     def is_label_present(self, name):
         elements = self.driver.find_elements(
@@ -105,24 +111,8 @@ class LabelsPage:
     # РАБОТА СО СПИСКОМ
     # -----------------------------------------------------------------
 
-    def open_first_label(self):
-        self.driver.find_element(
-            By.CSS_SELECTOR,
-            "tbody tr:first-child",
-        ).click()
-
     def open_label_by_name(self, name):
-        self.driver.find_element(
-            By.XPATH,
-            "//tr[.//td[contains(@class, 'column-name') "
-            f"and normalize-space()='{name}']]",
-        ).click()
-
-    def select_first_checkbox(self):
-        self.driver.find_element(
-            By.CSS_SELECTOR,
-            "tbody input[type='checkbox']",
-        ).click()
+        self.get_label_row(name).click()
 
     def select_checkbox_by_name(self, name):
         checkbox = self.driver.find_element(
@@ -162,6 +152,7 @@ class LabelsPage:
             By.CSS_SELECTOR,
             'a[href="#/labels/create"]',
         ).click()
+
         self.wait.until(
             EC.visibility_of_element_located((By.NAME, "name"))
         )

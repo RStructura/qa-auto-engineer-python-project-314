@@ -7,10 +7,7 @@ from pages.users_page import UsersPage
 
 
 def build_unique_user_payload(prefix="User"):
-    """
-    Генерация уникальных email / first / last.
-    time.time_ns() надежнее, чем int(time.time()).
-    """
+    """Генерация уникальных email / first / last"""
     unique_value = time.time_ns()
     email = f"{prefix.lower()}_{unique_value}@gmail.com"
     first = f"{prefix}First_{unique_value}"
@@ -20,7 +17,7 @@ def build_unique_user_payload(prefix="User"):
 
 def create_user_and_get_state(page, prefix="User"):
     """
-    Создает пользователя и возвращает:
+    Создание пользователя и возврат:
     new_email, new_first, new_last, count_before_create, count_after_create
     """
     page.open_users()
@@ -45,9 +42,7 @@ def create_user_and_get_state(page, prefix="User"):
         f"Ожидали {count_before_create + 1} users, "
         f"но нашли {count_after_create}"
     )
-    assert page.is_user_present(new_email), (
-        f"Пользователь '{new_email}' не найден в списке"
-    )
+    assert page.is_user_present(new_email)
 
     return (
         new_email,
@@ -110,10 +105,10 @@ def test_create_new_user(auth_driver):
         prefix="CreateUser",
     )
 
-    row_text = page.get_user_row_text(new_email)
-    assert new_email in row_text
-    assert new_first in row_text
-    assert new_last in row_text
+    row_values = page.get_user_row_values(new_email)
+    assert row_values["email"] == new_email
+    assert row_values["first"] == new_first
+    assert row_values["last"] == new_last
 
     print(
         f"\nУспех! Пользователь {new_email} создан. "
@@ -157,6 +152,8 @@ def test_edit_user_with_validation(auth_driver):
     new_email, new_first, new_last = build_unique_user_payload("EditUserNew")
 
     page.force_clear_input("email")
+    page.force_clear_input("firstName")
+    page.force_clear_input("lastName")
     page.fill_user_form(
         email=new_email,
         first=new_first,
@@ -171,13 +168,10 @@ def test_edit_user_with_validation(auth_driver):
     assert page.is_user_present(new_email)
     assert not page.is_user_present(old_email)
 
-    row_text = page.get_user_row_text(new_email)
-    assert new_email in row_text
-    assert new_first in row_text
-    assert new_last in row_text
-    assert old_email not in row_text
-    assert old_first not in row_text
-    assert old_last not in row_text
+    row_values = page.get_user_row_values(new_email)
+    assert row_values["email"] == new_email
+    assert row_values["first"] == new_first
+    assert row_values["last"] == new_last
 
     print("\nУспех! Редактирование и валидация проверены.")
 

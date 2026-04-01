@@ -89,17 +89,46 @@ def test_view_tasks(auth_driver):
 def test_filter_tasks(auth_driver):
     # Авторизация и переход на страницу tasks
     page = TasksPage(auth_driver)
+
+    # Создаение подходящей и неподходящей задач
+    (
+        matching_id,
+        matching_title,
+        matching_content,
+        _,
+        _,
+    ) = create_task_and_get_id(
+        page,
+        assignee="john@google.com",
+        status="Published",
+        labels=["critical"],
+        prefix="FilterMatchTask",
+    )
+
+    (
+        noise_id,
+        noise_title,
+        noise_content,
+        _,
+        _,
+    ) = create_task_and_get_id(
+        page,
+        assignee="emily@example.com",
+        status="Draft",
+        labels=["feature"],
+        prefix="FilterNoiseTask",
+    )
+
     page.open_tasks()
 
     # Фиксация исходного набора id задач до фильтрации
-    initial_ids = set(page.get_all_task_ids())
-    initial_count = len(initial_ids)
+    ids_before_filter = set(page.get_all_task_ids())
+    count_before_filter = len(ids_before_filter)
 
-    assert initial_count > 0, "На доске нет задач до фильтрации"
+    assert count_before_filter > 0, "На доске нет задач до фильтрации"
 
     # Применение 3 фильтров
     apply_default_filters(page)
-    time.sleep(1)
 
     # Сбор набора id после фильтрации
     filtered_ids = set(page.get_all_task_ids())
@@ -110,10 +139,21 @@ def test_filter_tasks(auth_driver):
     # 2) набор задач изменился
     # 3) количество стало меньше
     assert filtered_count > 0, "После фильтрации задач нет"
-    assert filtered_ids != initial_ids, "Фильтрация не изменила набор задач"
-    assert filtered_count < initial_count, "Фильтры не сузили выборку"
+    assert filtered_ids != ids_before_filter, (
+        "Фильтрация не изменила набор задач"
+    )
+    assert filtered_count < count_before_filter, (
+        "Фильтры не сузили выборку"
+    )
 
-    # Проверка фильтра по статусу Published
+    # Подходящая задача обязана остаться, неподходящая обязана исчезнуть
+    assert matching_id in filtered_ids, (
+        f"Подходящая задача {matching_title} не попала в результат фильтра"
+    )
+    assert noise_id not in filtered_ids, (
+        f"Неподходящая задача {noise_title} осталась после фильтрации"
+    )
+
     published_ids = set(page.get_task_ids_in_column("Published"))
     assert filtered_ids == published_ids, (
         "После фильтра по статусу видны не только Published"
@@ -137,7 +177,7 @@ def test_filter_tasks(auth_driver):
 
     print(
         f"\nУспех! Фильтры работают. "
-        f"Было задач: {initial_count}, стало: {filtered_count}"
+        f"Было задач: {count_before_filter}, стало: {filtered_count}"
     )
 
 
@@ -157,7 +197,7 @@ def test_create_new_task(auth_driver):
         assignee="emily@example.com",
         status="Draft",
         labels=["task", "feature"],
-        prefix="Create Task",
+        prefix="CreateTask",
     )
 
     # Проверка статуса через положение задачи в колонке
@@ -202,13 +242,13 @@ def test_edit_task(auth_driver):
         assignee="john@google.com",
         status="Draft",
         labels=["task"],
-        prefix="Edit Task",
+        prefix="EditTaskOld",
     )
 
     page.open_task_edit(task_id)
 
     # Новые данные
-    new_title, new_content = build_unique_task_payload("Edited Task")
+    new_title, new_content = build_unique_task_payload("EditTaskNew")
 
     # Обновление
     page.update_task_fields(
@@ -258,7 +298,7 @@ def test_drag_and_drop_between_columns(auth_driver):
         assignee="john@google.com",
         status="To Review",
         labels=["bug"],
-        prefix="DnD Task",
+        prefix="DnDTask",
     )
 
     start_status = "To Review"
@@ -306,7 +346,7 @@ def test_delete_task_by_show(auth_driver):
         assignee="john@google.com",
         status="Draft",
         labels=["task"],
-        prefix="Delete Task",
+        prefix="DeleteTask",
     )
 
     assert page.is_task_present(task_id), f"Задача {task_id} не найдена"
@@ -335,7 +375,7 @@ def test_delete_task_by_show(auth_driver):
     assert title.lower() not in page_context, (
         f"Удаленная задача '{title}' все еще видна на странице"
     )
-    
+
     print(
         f"\nУспех! Было задач: {count_before_delete}, стало: {final_count}. "
         f"Карточка с ID = {task_id} удалена."
