@@ -16,10 +16,14 @@ class LabelsPage:
     # -----------------------------------------------------------------
 
     def open_labels(self):
-        """Открытие страницы labels с ожиданием загрузки списка"""
+        """Открыть страницу labels и дождаться списка или empty state."""
         self.driver.find_element(By.CSS_SELECTOR, 'a[href="#/labels"]').click()
+
         self.wait.until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR, "table"))
+            lambda d: (
+                len(d.find_elements(By.CSS_SELECTOR, "table")) > 0
+                or len(d.find_elements(By.CSS_SELECTOR, ".RaEmpty-message")) > 0
+            )
         )
 
     # -----------------------------------------------------------------

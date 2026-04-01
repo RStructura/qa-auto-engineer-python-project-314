@@ -184,6 +184,8 @@ def test_delete_all_labels(auth_driver):
     page.select_all_checkbox()
     page.click_delete_button()
 
+    page.open_labels()
+
     assert page.get_labels_count() == 0
     assert page.is_empty_message_visible()
 

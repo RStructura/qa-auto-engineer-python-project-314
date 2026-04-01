@@ -6,6 +6,58 @@ from selenium.webdriver.common.by import By
 from pages.users_page import UsersPage
 
 
+def build_unique_user_payload(prefix="User"):
+    """
+    Генерация уникальных email / first / last.
+    time.time_ns() надежнее, чем int(time.time()).
+    """
+    unique_value = time.time_ns()
+    email = f"{prefix.lower()}_{unique_value}@gmail.com"
+    first = f"{prefix}First_{unique_value}"
+    last = f"{prefix}Last_{unique_value}"
+    return email, first, last
+
+
+def create_user_and_get_state(page, prefix="User"):
+    """
+    Создает пользователя и возвращает:
+    new_email, new_first, new_last, count_before_create, count_after_create
+    """
+    page.open_users()
+    count_before_create = page.get_users_count()
+
+    new_email, new_first, new_last = build_unique_user_payload(prefix)
+
+    page.click_create()
+    page.fill_user_form(
+        email=new_email,
+        first=new_first,
+        last=new_last,
+    )
+    page.click_save()
+
+    page.open_users()
+    page.wait_for_user_present(new_email)
+
+    count_after_create = page.get_users_count()
+
+    assert count_after_create == count_before_create + 1, (
+        f"Ожидали {count_before_create + 1} users, "
+        f"но нашли {count_after_create}"
+    )
+    assert page.is_user_present(new_email), (
+        f"Пользователь '{new_email}' не найден в списке"
+    )
+
+    return (
+        new_email,
+        new_first,
+        new_last,
+        count_before_create,
+        count_after_create,
+    )
+
+
 @pytest.mark.step_4_viewList
 def test_view_users_list(auth_driver):
     # Проверка открытия списка и загрузки страницы
@@ -14,7 +66,8 @@ def test_view_users_list(auth_driver):
 
     # Проверка наличия элементов и списка
     header_text = auth_driver.find_element(
-        By.CSS_SELECTOR, "table thead"
+        By.CSS_SELECTOR,
+        "table thead",
     ).text
 
     assert "Email" in header_text
@@ -23,13 +76,16 @@ def test_view_users_list(auth_driver):
     assert page.get_users_count() > 0, "Список users пуст"
 
     email = auth_driver.find_element(
-        By.CSS_SELECTOR, "tbody tr:first-child td.column-email"
+        By.CSS_SELECTOR,
+        "tbody tr:first-child td.column-email",
     ).text.strip()
     first_name = auth_driver.find_element(
-        By.CSS_SELECTOR, "tbody tr:first-child td.column-firstName"
+        By.CSS_SELECTOR,
+        "tbody tr:first-child td.column-firstName",
     ).text.strip()
     last_name = auth_driver.find_element(
-        By.CSS_SELECTOR, "tbody tr:first-child td.column-lastName"
+        By.CSS_SELECTOR,
+        "tbody tr:first-child td.column-lastName",
     ).text.strip()
 
     assert "@" in email, "Email в первой строке не отображается"
@@ -42,42 +98,46 @@ def test_view_users_list(auth_driver):
 @pytest.mark.step_4_createUser
 def test_create_new_user(auth_driver):
     page = UsersPage(auth_driver)
-    page.open_users()
 
-    # Создание переменной для проверки изм. списка
-    initial_count = page.get_users_count()
+    (
+        new_email,
+        new_first,
+        new_last,
+        count_before,
+        count_after,
+    ) = create_user_and_get_state(
+        page,
+        prefix="CreateUser",
+    )
 
-    # Создание переменных для генерации данных
-    test_email = f"email_{int(time.time())}@gmail.com"
-    test_first = f"FirstName_{int(time.time())}"
-    test_last = f"LastName_{int(time.time())}"
-
-    # Создание пользователя
-    page.click_create()
-    page.fill_user_form(email=test_email, first=test_first, last=test_last)
-    page.click_save()
-
-    # Пауза для видимой проверки
-    time.sleep(1)
-
-    # Обновление страницы на всякий случай
-    page.open_users()
-
-    # Провека изменений
-    assert page.is_user_present(test_email)
-    assert page.get_users_count() == initial_count + 1
+    row_text = page.get_user_row_text(new_email)
+    assert new_email in row_text
+    assert new_first in row_text
+    assert new_last in row_text
 
     print(
-        f"\nУспех! Пользователь {test_email} создан."
-        f" Было: {initial_count}, стало: {page.get_users_count()}"
+        f"\nУспех! Пользователь {new_email} создан. "
+        f"Было: {count_before}, стало: {count_after}"
     )
 
 
 @pytest.mark.step_4_editUser
 def test_edit_user_with_validation(auth_driver):
     page = UsersPage(auth_driver)
+
+    (
+        old_email,
+        old_first,
+        old_last,
+        _count_before_create,
+        _count_after_create,
+    ) = create_user_and_get_state(
+        page,
+        prefix="EditUserOld",
+    )
+
     page.open_users()
-    page.open_first_user()
+    page.open_user_by_email(old_email)
 
     # Проверка валидации пустых полей
     page.force_clear_input("email")
@@ -93,21 +153,31 @@ def test_edit_user_with_validation(auth_driver):
 
     assert "incorrect" in page.get_error_message().lower()
 
-    # Обновление значений и сохранение
-    new_first = "Name_updated"
+    # Обновление значений
+    new_email, new_first, new_last = build_unique_user_payload("EditUserNew")
+
     page.force_clear_input("email")
     page.fill_user_form(
-        email="correct@gmail.com", first=new_first, last="Lastname_update"
+        email=new_email,
+        first=new_first,
+        last=new_last,
     )
     page.click_save()
 
-    # Проверка изменений
-    time.sleep(1)
     page.open_users()
+    page.wait_for_user_present(new_email)
 
-    row_text = page.get_user_row_text("correct@gmail.com")
-    assert "Name_updated" in row_text
-    assert "Lastname_update" in row_text
+    # Проверяем появление нового и исчезновение старого
+    assert page.is_user_present(new_email)
+    assert not page.is_user_present(old_email)
+
+    row_text = page.get_user_row_text(new_email)
+    assert new_email in row_text
+    assert new_first in row_text
+    assert new_last in row_text
+    assert old_email not in row_text
+    assert old_first not in row_text
+    assert old_last not in row_text
 
     print("\nУспех! Редактирование и валидация проверены.")
 
@@ -115,50 +185,66 @@ def test_edit_user_with_validation(auth_driver):
 @pytest.mark.step_4_deleteOne
 def test_delete_user_via_checkbox(auth_driver):
     page = UsersPage(auth_driver)
+
+    (
+        target_email,
+        _target_first,
+        _target_last,
+        _count_before_create,
+        count_before_delete,
+    ) = create_user_and_get_state(
+        page,
+        prefix="DeleteUserCheckbox",
+    )
+
     page.open_users()
-
-    assert page.get_users_count() > 0, "Список пуст"
-
-    initial_count = page.get_users_count()
-    email_to_delete = page.get_first_user_email()
-
-    page.select_first_checkbox()
+    page.select_checkbox_by_email(target_email)
     page.click_delete_button()
 
-    time.sleep(1)
     page.open_users()
+    page.wait_for_user_absent(target_email)
 
-    assert not page.is_user_present(email_to_delete)
-    assert page.get_users_count() == initial_count - 1
+    count_after_delete = page.get_users_count()
+
+    assert not page.is_user_present(target_email)
+    assert count_after_delete == count_before_delete - 1
 
     print(
-        f"\nУспех! Удален через чекбокс: {email_to_delete}. "
-        f"Было: {initial_count}, стало: {page.get_users_count()}"
+        f"\nУспех! Пользователь {target_email} удален через чекбокс. "
+        f"Было: {count_before_delete}, стало: {count_after_delete}"
     )
 
 
 @pytest.mark.step_4_deleteOne
 def test_delete_user_via_edit(auth_driver):
     page = UsersPage(auth_driver)
+
+    (
+        target_email,
+        _target_first,
+        _target_last,
+        _count_before_create,
+        count_before_delete,
+    ) = create_user_and_get_state(
+        page,
+        prefix="DeleteUserEdit",
+    )
+
     page.open_users()
-
-    assert page.get_users_count() > 0, "Список пуст"
-
-    initial_count = page.get_users_count()
-    email_to_delete = page.get_first_user_email()
-
-    page.open_first_user()
+    page.open_user_by_email(target_email)
     page.click_delete_button()
 
-    time.sleep(1)
     page.open_users()
+    page.wait_for_user_absent(target_email)
 
-    assert not page.is_user_present(email_to_delete)
-    assert page.get_users_count() == initial_count - 1
+    count_after_delete = page.get_users_count()
+
+    assert not page.is_user_present(target_email)
+    assert count_after_delete == count_before_delete - 1
 
     print(
-        f"\nУспех! Удален через редактирование: {email_to_delete}. "
-        f"Было: {initial_count}, стало: {page.get_users_count()}"
+        f"\nУспех! Пользователь {target_email} удален через редактирование. "
+        f"Было: {count_before_delete}, стало: {count_after_delete}"
     )
 
 
@@ -168,19 +254,17 @@ def test_delete_all_users(auth_driver):
     page.open_users()
 
     initial_count = page.get_users_count()
-    
-    assert page.get_users_count() > 0, "Список пуст"
+    assert initial_count > 0, "Список пуст"
 
     page.select_all_checkbox()
     page.click_delete_button()
 
-    time.sleep(1)
     page.open_users()
 
     assert page.get_users_count() == 0
     assert page.is_empty_message_visible()
 
     print(
-        f"\nУспех! Все пользователи удалены."
+        f"\nУспех! Все пользователи удалены. "
         f"Было: {initial_count}, стало: {page.get_users_count()}"
     )

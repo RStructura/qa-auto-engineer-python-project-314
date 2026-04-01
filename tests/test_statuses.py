@@ -204,6 +204,8 @@ def test_delete_all_statuses(auth_driver):
     page.select_all_checkbox()
     page.click_delete_button()
 
+    page.open_statuses()
+
     assert page.get_statuses_count() == 0
     assert page.is_empty_message_visible()
 

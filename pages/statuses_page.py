@@ -16,14 +16,17 @@ class StatusesPage:
     # -----------------------------------------------------------------
 
     def open_statuses(self):
-        """Открыть страницу statuses и дождаться загрузки таблицы."""
+        """Открыть страницу statuses и дождаться списка или empty state."""
         self.driver.find_element(
             By.CSS_SELECTOR,
             'a[href="#/task_statuses"]',
         ).click()
 
         self.wait.until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR, "table"))
+            lambda d: (
+                len(d.find_elements(By.CSS_SELECTOR, "table")) > 0
+                or len(d.find_elements(By.CSS_SELECTOR, ".RaEmpty-message")) > 0
+            )
         )
 
     # -----------------------------------------------------------------
