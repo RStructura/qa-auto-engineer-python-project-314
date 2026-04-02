@@ -176,16 +176,26 @@ def test_delete_all_labels(auth_driver):
     page = LabelsPage(auth_driver)
     page.open_labels()
 
-    initial_count = page.get_labels_count()
+    # Фиксиция списка labels до удаления
+    initial_names = page.get_all_label_names()
+    initial_count = len(initial_names)
+
     assert initial_count > 0, "Список пуст"
 
     page.select_all_checkbox()
     page.click_delete_button()
 
-    page.open_labels()
+    # Ожидание empty state на странице после удаления
+    page.wait_for_empty_state()
 
     assert page.get_labels_count() == 0
     assert page.is_empty_message_visible()
+
+    # Проверка удаления зафиксированных labels
+    for name in initial_names:
+        assert not page.is_label_present(name), (
+            f"Лейбл '{name}' остался после delete all"
+        )
 
     print(
         f"\nУспех! Список лейблов полностью очищен. "

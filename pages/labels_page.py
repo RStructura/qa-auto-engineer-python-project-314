@@ -107,6 +107,14 @@ class LabelsPage:
             ) == 0
         )
 
+    def wait_for_empty_state(self):
+        """Ожидание empty state после удаления всех labels"""
+        self.wait.until(
+            EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, ".RaEmpty-message")
+            )
+        )
+
     # -----------------------------------------------------------------
     # РАБОТА СО СПИСКОМ
     # -----------------------------------------------------------------

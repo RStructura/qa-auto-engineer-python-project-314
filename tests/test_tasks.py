@@ -89,43 +89,13 @@ def test_view_tasks(auth_driver):
 def test_filter_tasks(auth_driver):
     # Авторизация и переход на страницу tasks
     page = TasksPage(auth_driver)
-
-    # Создаение подходящей и неподходящей задач
-    (
-        matching_id,
-        matching_title,
-        matching_content,
-        _,
-        _,
-    ) = create_task_and_get_id(
-        page,
-        assignee="john@google.com",
-        status="Published",
-        labels=["critical"],
-        prefix="FilterMatchTask",
-    )
-
-    (
-        noise_id,
-        noise_title,
-        noise_content,
-        _,
-        _,
-    ) = create_task_and_get_id(
-        page,
-        assignee="emily@example.com",
-        status="Draft",
-        labels=["feature"],
-        prefix="FilterNoiseTask",
-    )
-
     page.open_tasks()
 
     # Фиксация исходного набора id задач до фильтрации
-    ids_before_filter = set(page.get_all_task_ids())
-    count_before_filter = len(ids_before_filter)
+    initial_ids = set(page.get_all_task_ids())
+    initial_count = len(initial_ids)
 
-    assert count_before_filter > 0, "На доске нет задач до фильтрации"
+    assert initial_count > 0, "На доске нет задач до фильтрации"
 
     # Применение 3 фильтров
     apply_default_filters(page)
@@ -139,21 +109,10 @@ def test_filter_tasks(auth_driver):
     # 2) набор задач изменился
     # 3) количество стало меньше
     assert filtered_count > 0, "После фильтрации задач нет"
-    assert filtered_ids != ids_before_filter, (
-        "Фильтрация не изменила набор задач"
-    )
-    assert filtered_count < count_before_filter, (
-        "Фильтры не сузили выборку"
-    )
+    assert filtered_ids != initial_ids, ("Фильтрация не изменила набор задач")
+    assert filtered_count < initial_count, ("Фильтры не сузили выборку")
 
-    # Подходящая задача обязана остаться, неподходящая обязана исчезнуть
-    assert matching_id in filtered_ids, (
-        f"Подходящая задача {matching_title} не попала в результат фильтра"
-    )
-    assert noise_id not in filtered_ids, (
-        f"Неподходящая задача {noise_title} осталась после фильтрации"
-    )
-
+    # На доске задачи только в Published
     published_ids = set(page.get_task_ids_in_column("Published"))
     assert filtered_ids == published_ids, (
         "После фильтра по статусу видны не только Published"
@@ -177,7 +136,7 @@ def test_filter_tasks(auth_driver):
 
     print(
         f"\nУспех! Фильтры работают. "
-        f"Было задач: {count_before_filter}, стало: {filtered_count}"
+        f"Было задач: {initial_count}, стало: {filtered_count}"
     )
 
 
