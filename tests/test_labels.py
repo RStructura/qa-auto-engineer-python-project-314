@@ -7,7 +7,7 @@ from pages.labels_page import LabelsPage
 
 
 def build_unique_label_name(prefix="Label"):
-    """Генерация уникального niput"""
+    """Генерация уникального label name"""
     return f"{prefix}_{time.time_ns()}"
 
 
@@ -174,27 +174,36 @@ def test_delete_label_via_edit(auth_driver):
 @pytest.mark.step_6_deleteAll
 def test_delete_all_labels(auth_driver):
     page = LabelsPage(auth_driver)
-    page.open_labels()
 
-    # Фиксиция списка labels до удаления
+    created_names = []
+    for prefix in ("DeleteAllLabelA", "DeleteAllLabelB"):
+        created_name, _, _ = create_label_and_get_state(page, prefix=prefix)
+        created_names.append(created_name)
+
+    page.open_labels()
     initial_names = page.get_all_label_names()
     initial_count = len(initial_names)
 
     assert initial_count > 0, "Список пуст"
+    for created_name in created_names:
+        assert created_name in initial_names, (
+            f"Контрольный лейбл '{created_name}' не найден перед delete all"
+        )
 
     page.select_all_checkbox()
     page.click_delete_button()
 
-    # Ожидание empty state на странице после удаления
-    page.wait_for_empty_state()
+    page.open_labels()
+    assert page.is_empty_message_visible(), (
+        "После delete all не появился empty state"
+    )
+    assert page.get_labels_count() == 0, (
+        "После delete all на странице остались строки labels"
+    )
 
-    assert page.get_labels_count() == 0
-    assert page.is_empty_message_visible()
-
-    # Проверка удаления зафиксированных labels
-    for name in initial_names:
-        assert not page.is_label_present(name), (
-            f"Лейбл '{name}' остался после delete all"
+    for created_name in created_names:
+        assert not page.is_label_present(created_name), (
+            f"Контрольный лейбл '{created_name}' остался после delete all"
         )
 
     print(

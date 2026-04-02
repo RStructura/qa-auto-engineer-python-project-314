@@ -52,10 +52,9 @@ class TasksPage:
     def open_tasks(self):
         """Открытие страницы канбан-доски tasks"""
         self.wait.until(EC.element_to_be_clickable(self.url_tasks)).click()
-        # Ожидание фильтра ассайни для подтверждения загрузки доски
         self.wait.until(
             EC.visibility_of_element_located(
-                self.filter_assignee_container
+                self.filter_assignee_container,
             )
         )
 
@@ -94,7 +93,7 @@ class TasksPage:
         ).text.lower()
 
     def get_all_task_ids(self):
-        """Сбор все id задач, которые сейчас видны на доске"""
+        """Сбор всех id задач, которые сейчас видны на доске"""
         found_elements = self.driver.find_elements(*self.element_task)
         ids = []
 
@@ -152,8 +151,16 @@ class TasksPage:
         lines = self._extract_card_lines(element.text)
         return lines[1] if len(lines) > 1 else ""
 
+    def wait_for_task_by_title(self, expected_title):
+        """Ожидание появления задачи по title на доске"""
+
+        def task_exists(_driver):
+            return self.find_task_id_by_title(expected_title) is not None
+
+        self.wait.until(task_exists)
+
     def wait_for_task_title(self, task_id, expected_title):
-        """Ожидание появления title задачи"""
+        """Ожидание появления title задачи по id"""
         locator = (
             By.CSS_SELECTOR,
             f'[data-rfd-draggable-id="{task_id}"]',
@@ -176,7 +183,7 @@ class TasksPage:
 
     def get_task_ids_in_column(self, status_name):
         """
-        Получение id видимых задач в конкретной колонке 
+        Получение id видимых задач в конкретной колонке
         для проверки статуса через положение на доске
         """
         elements = self.driver.find_elements(
@@ -295,7 +302,6 @@ class TasksPage:
 
         self._click_visible_option(value)
 
-        # Пауза UI для закрытия выпадающего списка
         time.sleep(0.5)
 
     def verify_filters_visible(self):
@@ -335,7 +341,6 @@ class TasksPage:
 
         self._click_visible_option(text)
 
-        # Закрытие выпадающего списка
         self.driver.switch_to.active_element.send_keys(Keys.ESCAPE)
 
     def create_task(self, assignee, title, content, status, labels):
@@ -376,9 +381,7 @@ class TasksPage:
         )
 
     def clear_labels(self, current_labels):
-        """
-        Снятие текущих значений label
-        """
+        """Снятие текущих значений label"""
         for label in current_labels:
             self.select_option("label_id", label)
 
