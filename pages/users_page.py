@@ -1,4 +1,9 @@
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import (
+    ElementClickInterceptedException,
+    NoSuchElementException,
+    StaleElementReferenceException,
+    WebDriverException,
+)
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -11,18 +16,30 @@ class UsersPage:
         self.driver = driver
         self.wait = WebDriverWait(driver, 10)
 
+        self.nav_link = (By.CSS_SELECTOR, 'a[href="#/users"]')
+        self.delete_button = (By.CSS_SELECTOR, 'button[aria-label="Delete"]')
+        self.email_input = (By.NAME, "email")
+        self.first_input = (By.NAME, "firstName")
+        self.last_input = (By.NAME, "lastName")
+
     # -----------------------------------------------------------------
     # НАВИГАЦИЯ
     # -----------------------------------------------------------------
 
     def open_users(self):
-        """Открытие страницы users и получение списка / empty state"""
-        self.driver.find_element(By.CSS_SELECTOR, 'a[href="#/users"]').click()
+        self.wait.until(
+            EC.element_to_be_clickable(self.nav_link)
+        ).click()
 
         self.wait.until(
             lambda d: (
                 len(d.find_elements(By.CSS_SELECTOR, "table")) > 0
-                or len(d.find_elements(By.CSS_SELECTOR, ".RaEmpty-message")) > 0
+                or len(
+                    d.find_elements(
+                        By.CSS_SELECTOR,
+                        ".RaEmpty-message",
+                    )
+                ) > 0
             )
         )
 
@@ -46,12 +63,6 @@ class UsersPage:
             if element.text.strip()
         ]
 
-    def get_first_user_email(self):
-        return self.driver.find_element(
-            By.CSS_SELECTOR,
-            "td.column-email",
-        ).text.strip()
-
     def get_error_message(self):
         try:
             return self.driver.find_element(
@@ -60,6 +71,12 @@ class UsersPage:
             ).text
         except NoSuchElementException:
             return ""
+
+    def get_input_value(self, field_name):
+        return self.driver.find_element(
+            By.NAME,
+            field_name,
+        ).get_attribute("value")
 
     def get_user_row(self, email):
         return self.driver.find_element(
@@ -115,6 +132,63 @@ class UsersPage:
             ) == 0
         )
 
+    def wait_for_empty_state(self):
+        self.wait.until(
+            EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, ".RaEmpty-message")
+            )
+        )
+
+    # -----------------------------------------------------------------
+    # ВСПОМОГАТЕЛЬНЫЕ КЛИКИ
+    # -----------------------------------------------------------------
+
+    def _click_checkbox(self, locator):
+        checkbox = self.wait.until(
+            EC.presence_of_element_located(locator)
+        )
+
+        self.driver.execute_script(
+            "arguments[0].scrollIntoView({block: 'center'});",
+            checkbox,
+        )
+
+        try:
+            checkbox.click()
+        except (
+            ElementClickInterceptedException,
+            StaleElementReferenceException,
+            WebDriverException,
+        ):
+            self.driver.execute_script(
+                "arguments[0].click();",
+                checkbox,
+            )
+
+    def _click_button(self, locator):
+        button = self.wait.until(
+            EC.presence_of_element_located(locator)
+        )
+
+        self.driver.execute_script(
+            "arguments[0].scrollIntoView({block: 'center'});",
+            button,
+        )
+
+        self.wait.until(lambda d: d.find_element(*locator).is_enabled())
+
+        try:
+            button.click()
+        except (
+            ElementClickInterceptedException,
+            StaleElementReferenceException,
+            WebDriverException,
+        ):
+            self.driver.execute_script(
+                "arguments[0].click();",
+                button,
+            )
+
     # -----------------------------------------------------------------
     # РАБОТА СО СПИСКОМ
     # -----------------------------------------------------------------
@@ -123,24 +197,22 @@ class UsersPage:
         self.get_user_row(email).click()
 
     def select_checkbox_by_email(self, email):
-        checkbox = self.driver.find_element(
+        locator = (
             By.XPATH,
             "//tr[.//td[contains(@class, 'column-email') "
             f"and normalize-space()='{email}']]//input[@type='checkbox']",
         )
-        checkbox.click()
+        self._click_checkbox(locator)
 
     def select_all_checkbox(self):
-        self.driver.find_element(
+        locator = (
             By.CSS_SELECTOR,
             "thead input[type='checkbox']",
-        ).click()
+        )
+        self._click_checkbox(locator)
 
     def click_delete_button(self):
-        self.driver.find_element(
-            By.CSS_SELECTOR,
-            'button[aria-label="Delete"]',
-        ).click()
+        self._click_button(self.delete_button)
 
     def is_empty_message_visible(self):
         try:
@@ -156,31 +228,58 @@ class UsersPage:
     # -----------------------------------------------------------------
 
     def click_create(self):
-        self.driver.find_element(
-            By.CSS_SELECTOR,
-            'a[href="#/users/create"]',
+        self.wait.until(
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, 'a[href="#/users/create"]')
+            )
         ).click()
 
         self.wait.until(
-            EC.visibility_of_element_located((By.NAME, "email"))
+            EC.visibility_of_element_located(self.email_input)
         )
 
     def fill_user_form(self, email=None, first=None, last=None):
-        if email:
-            self.driver.find_element(By.NAME, "email").send_keys(email)
-        if first:
-            self.driver.find_element(By.NAME, "firstName").send_keys(first)
-        if last:
-            self.driver.find_element(By.NAME, "lastName").send_keys(last)
+        if email is not None:
+            self.driver.find_element(*self.email_input).send_keys(email)
+        if first is not None:
+            self.driver.find_element(*self.first_input).send_keys(first)
+        if last is not None:
+            self.driver.find_element(*self.last_input).send_keys(last)
 
     def click_save(self):
-        self.driver.find_element(
-            By.CSS_SELECTOR,
-            'button[type="submit"]',
-        ).click()
+        self._click_button((By.CSS_SELECTOR, 'button[type="submit"]'))
 
     def force_clear_input(self, field_name):
-        element = self.driver.find_element(By.NAME, field_name)
+        element = self.wait.until(
+            EC.visibility_of_element_located((By.NAME, field_name))
+        )
+        element.click()
+
         actions = ActionChains(self.driver)
-        actions.move_to_element(element).click().click().click().perform()
-        element.send_keys(Keys.BACKSPACE)
+        (
+            actions
+            .key_down(Keys.CONTROL)
+            .send_keys("a")
+            .key_up(Keys.CONTROL)
+            .send_keys(Keys.BACKSPACE)
+            .perform()
+        )
+
+        self.driver.execute_script(
+            (
+                "arguments[0].dispatchEvent("
+                "new Event('input', {bubbles: true})"
+                ");"
+                "arguments[0].dispatchEvent("
+                "new Event('change', {bubbles: true})"
+                ");"
+            ),
+            element,
+        )
+
+        self.wait.until(
+            lambda d: d.find_element(
+                By.NAME,
+                field_name,
+            ).get_attribute("value") == ""
+        )

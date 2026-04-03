@@ -7,7 +7,6 @@ from pages.users_page import UsersPage
 
 
 def build_unique_user_payload(prefix="User"):
-    """Генерация уникальных email / first / last"""
     unique_value = time.time_ns()
     email = f"{prefix.lower()}_{unique_value}@gmail.com"
     first = f"{prefix}First_{unique_value}"
@@ -16,10 +15,6 @@ def build_unique_user_payload(prefix="User"):
 
 
 def create_user_and_get_state(page, prefix="User"):
-    """
-    Создание пользователя и возврат:
-    new_email, new_first, new_last, count_before_create, count_after_create
-    """
     page.open_users()
     count_before_create = page.get_users_count()
 
@@ -55,11 +50,9 @@ def create_user_and_get_state(page, prefix="User"):
 
 @pytest.mark.step_4_viewList
 def test_view_users_list(auth_driver):
-    # Проверка открытия списка и загрузки страницы
     page = UsersPage(auth_driver)
     page.open_users()
 
-    # Проверка наличия элементов и списка
     header_text = auth_driver.find_element(
         By.CSS_SELECTOR,
         "table thead",
@@ -122,10 +115,10 @@ def test_edit_user_with_validation(auth_driver):
 
     (
         old_email,
-        old_first,
-        old_last,
+        _old_first,
+        _old_last,
         _count_before_create,
-        _count_after_create,
+        count_before_edit,
     ) = create_user_and_get_state(
         page,
         prefix="EditUserOld",
@@ -134,22 +127,31 @@ def test_edit_user_with_validation(auth_driver):
     page.open_users()
     page.open_user_by_email(old_email)
 
-    # Проверка валидации пустых полей
     page.force_clear_input("email")
     page.force_clear_input("firstName")
     page.force_clear_input("lastName")
-    page.click_save()
+    assert page.get_input_value("email") == "", "Поле email не очистилось"
+    assert page.get_input_value("firstName") == "", (
+        "Поле firstName не очистилось"
+    )
+    assert page.get_input_value("lastName") == "", (
+        "Поле lastName не очистилось"
+    )
 
+    page.click_save()
     assert "required" in page.get_error_message().lower()
 
-    # Проверка валидации некорректного email
-    page.fill_user_form(email="invalid_email")
+    page.fill_user_form(
+        email="invalid_email",
+        first="ValidFirst",
+        last="ValidLast",
+    )
     page.click_save()
-
     assert "incorrect" in page.get_error_message().lower()
 
-    # Обновление значений
-    new_email, new_first, new_last = build_unique_user_payload("EditUserNew")
+    new_email, new_first, new_last = build_unique_user_payload(
+        "EditUserNew"
+    )
 
     page.force_clear_input("email")
     page.force_clear_input("firstName")
@@ -164,7 +166,10 @@ def test_edit_user_with_validation(auth_driver):
     page.open_users()
     page.wait_for_user_present(new_email)
 
-    # Проверяем появление нового и исчезновение старого
+    count_after_edit = page.get_users_count()
+    assert count_after_edit == count_before_edit, (
+        "После редактирования количество users не должно меняться"
+    )
     assert page.is_user_present(new_email)
     assert not page.is_user_present(old_email)
 
@@ -245,18 +250,44 @@ def test_delete_user_via_edit(auth_driver):
 @pytest.mark.step_4_deleteAll
 def test_delete_all_users(auth_driver):
     page = UsersPage(auth_driver)
-    page.open_users()
 
-    initial_count = page.get_users_count()
+    created_emails = []
+    for prefix in ("DeleteAllUserA", "DeleteAllUserB"):
+        created_email, *_ = create_user_and_get_state(
+            page,
+            prefix=prefix,
+        )
+        created_emails.append(created_email)
+
+    page.open_users()
+    initial_emails = page.get_all_user_emails()
+    initial_count = len(initial_emails)
+
     assert initial_count > 0, "Список пуст"
+    for created_email in created_emails:
+        assert created_email in initial_emails, (
+            f"Контрольный пользователь '{created_email}' "
+            "не найден перед delete all"
+        )
 
     page.select_all_checkbox()
     page.click_delete_button()
 
     page.open_users()
+    page.wait_for_empty_state()
 
-    assert page.get_users_count() == 0
-    assert page.is_empty_message_visible()
+    assert page.is_empty_message_visible(), (
+        "После delete all не появился empty state"
+    )
+    assert page.get_users_count() == 0, (
+        "После delete all на странице остались строки users"
+    )
+
+    for created_email in created_emails:
+        assert not page.is_user_present(created_email), (
+            f"Контрольный пользователь '{created_email}' "
+            "остался после delete all"
+        )
 
     print(
         f"\nУспех! Все пользователи удалены. "

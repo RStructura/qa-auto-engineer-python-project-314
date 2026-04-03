@@ -9,39 +9,48 @@ class LoginPage:
         self.driver = driver
         self.wait = WebDriverWait(driver, 10)
 
+        self.username_input = (By.NAME, "username")
+        self.password_input = (By.NAME, "password")
+        self.submit_button = (By.CSS_SELECTOR, 'button[type="submit"]')
+        self.profile_button = (By.CSS_SELECTOR, 'button[aria-label="Profile"]')
+        self.logout_item = (By.XPATH, "//li[contains(., 'Logout')]")
+
     def login(self, username, password):
-        self.wait.until(
-            EC.visibility_of_element_located((By.NAME, "username"))
-        ).send_keys(username)
+        username_input = self.wait.until(
+            EC.visibility_of_element_located(self.username_input)
+        )
+        username_input.clear()
+        username_input.send_keys(username)
+
+        password_input = self.wait.until(
+            EC.visibility_of_element_located(self.password_input)
+        )
+        password_input.clear()
+        password_input.send_keys(password)
+
+        self.wait.until(EC.element_to_be_clickable(self.submit_button)).click()
 
         self.wait.until(
-            EC.visibility_of_element_located((By.NAME, "password"))
-        ).send_keys(password)
-
-        self.wait.until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, 'button[type="submit"]'))
-        ).click()
-
-        snackbar_locator = (By.CLASS_NAME, "MuiSnackbarContent-root")
-        self.wait.until(EC.invisibility_of_element_located(snackbar_locator))
+            lambda d: (
+                len(d.find_elements(*self.profile_button)) > 0
+                and d.find_element(*self.profile_button).is_displayed()
+            )
+        )
+        self.wait.until(EC.invisibility_of_element_located(self.submit_button))
 
     def logout(self):
-        self.wait.until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, 'button[aria-label="Profile"]'))
-        ).click()
+        self.wait.until(EC.element_to_be_clickable(self.profile_button)).click()
+        self.wait.until(EC.element_to_be_clickable(self.logout_item)).click()
 
+        self.wait.until(EC.visibility_of_element_located(self.submit_button))
         self.wait.until(
-            EC.element_to_be_clickable(
-                (By.XPATH, "//li[contains(., 'Logout')]"))
-        ).click()
+            lambda d: len(d.find_elements(*self.profile_button)) == 0
+        )
 
     def is_login_button_visible(self):
         try:
             return self.wait.until(
-                EC.visibility_of_element_located(
-                    (By.CSS_SELECTOR, 'button[type="submit"]'))
+                EC.visibility_of_element_located(self.submit_button)
             ).is_displayed()
         except TimeoutException:
             return False
@@ -49,7 +58,7 @@ class LoginPage:
     def is_username_input_visible(self):
         try:
             return self.wait.until(
-                EC.visibility_of_element_located((By.NAME, "username"))
+                EC.visibility_of_element_located(self.username_input)
             ).is_displayed()
         except TimeoutException:
             return False
@@ -57,7 +66,15 @@ class LoginPage:
     def is_password_input_visible(self):
         try:
             return self.wait.until(
-                EC.visibility_of_element_located((By.NAME, "password"))
+                EC.visibility_of_element_located(self.password_input)
+            ).is_displayed()
+        except TimeoutException:
+            return False
+
+    def is_profile_button_visible(self):
+        try:
+            return self.wait.until(
+                EC.visibility_of_element_located(self.profile_button)
             ).is_displayed()
         except TimeoutException:
             return False

@@ -1,7 +1,4 @@
-# import time
-
 import pytest
-from selenium.webdriver.common.by import By
 
 from pages.login_page import LoginPage
 
@@ -11,10 +8,12 @@ def test_login_page_elements(driver, base_url):
     page = LoginPage(driver)
     driver.get(base_url)
 
-    # Проверка наличия элементов
     assert page.is_username_input_visible(), "Поле Username не отображается"
     assert page.is_password_input_visible(), "Поле Password не отображается"
     assert page.is_login_button_visible(), "Кнопка логина не отображается"
+    assert not page.is_profile_button_visible(), (
+        "На странице логина не должна отображаться кнопка профиля"
+    )
 
     print("\nУспех! Все основные элементы отображаются корректно")
 
@@ -24,17 +23,34 @@ def test_successful_login_and_logout(driver, base_url):
     page = LoginPage(driver)
     driver.get(base_url)
 
-    # Авторизация
     page.login("admin@google.com", "admin1234567")
 
-    # Проверка входа: поиск кнопки профиля
-    assert driver.find_element(
-        By.CSS_SELECTOR, 'button[aria-label="Profile"]').is_displayed()
+    assert page.is_profile_button_visible(), (
+        "После логина не отображается кнопка профиля"
+    )
+    assert not page.is_login_button_visible(), (
+        "После логина кнопка входа не должна быть видна"
+    )
+    assert not page.is_username_input_visible(), (
+        "После логина поле Username не должно быть видно"
+    )
+    assert not page.is_password_input_visible(), (
+        "После логина поле Password не должно быть видно"
+    )
 
-    # Выход
     page.logout()
 
-    # Проверка выхода: поиск кнопки логина
-    assert page.is_login_button_visible()
-    
+    assert page.is_login_button_visible(), (
+        "После логаута кнопка входа должна быть видна"
+    )
+    assert page.is_username_input_visible(), (
+        "После логаута поле Username должно быть видно"
+    )
+    assert page.is_password_input_visible(), (
+        "После логаута поле Password должно быть видно"
+    )
+    assert not page.is_profile_button_visible(), (
+        "После логаута кнопка профиля не должна отображаться"
+    )
+
     print("\nУспех! Вход и выход работают корректно.")

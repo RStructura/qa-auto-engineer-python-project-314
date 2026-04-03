@@ -7,7 +7,6 @@ from pages.statuses_page import StatusesPage
 
 
 def build_unique_status_payload(prefix="Status"):
-    """Генерация уникальных name/slug"""
     unique_value = time.time_ns()
     name = f"{prefix}_{unique_value}"
     slug = f"slug_{unique_value}"
@@ -15,10 +14,6 @@ def build_unique_status_payload(prefix="Status"):
 
 
 def create_status_and_get_state(page, prefix="Status"):
-    """
-    Создание status и возврат:
-    new_name, new_slug, count_before_create, count_after_create
-    """
     page.open_statuses()
     count_before_create = page.get_statuses_count()
 
@@ -44,11 +39,9 @@ def create_status_and_get_state(page, prefix="Status"):
 
 @pytest.mark.step_5_viewList
 def test_view_statuses_list(auth_driver):
-    # Проверка открытия списка и загрузки страницы
     page = StatusesPage(auth_driver)
     page.open_statuses()
 
-    # Проверка наличия элементов и списка
     header_text = auth_driver.find_element(
         By.CSS_SELECTOR,
         "table thead",
@@ -76,9 +69,11 @@ def test_view_statuses_list(auth_driver):
 def test_create_status(auth_driver):
     page = StatusesPage(auth_driver)
 
-    new_name, new_slug, count_before, count_after = create_status_and_get_state(
-        page,
-        prefix="CreateStatus",
+    new_name, new_slug, count_before, count_after = (
+        create_status_and_get_state(
+            page,
+            prefix="CreateStatus",
+        )
     )
 
     row_values = page.get_status_row_values(new_name)
@@ -95,7 +90,7 @@ def test_create_status(auth_driver):
 def test_edit_status(auth_driver):
     page = StatusesPage(auth_driver)
 
-    old_name, old_slug, _, _ = create_status_and_get_state(
+    old_name, old_slug, _, count_before_edit = create_status_and_get_state(
         page,
         prefix="EditStatusOld",
     )
@@ -103,13 +98,14 @@ def test_edit_status(auth_driver):
     page.open_statuses()
     page.open_status_by_name(old_name)
 
-    # Проверка валидации пустых полей
     page.force_clear_input("name")
     page.force_clear_input("slug")
+    assert page.get_input_value("name") == "", "Поле name не очистилось"
+    assert page.get_input_value("slug") == "", "Поле slug не очистилось"
+
     page.click_save()
     assert "required" in page.get_error_message().lower()
 
-    # Обновление значений и сохранение
     new_name, new_slug = build_unique_status_payload("EditStatusNew")
     page.fill_status_form(name=new_name, slug=new_slug)
     page.click_save()
@@ -117,13 +113,18 @@ def test_edit_status(auth_driver):
     page.open_statuses()
     page.wait_for_status_present(new_name)
 
-    # Проверяем появление нового и исчезновение старого
+    count_after_edit = page.get_statuses_count()
+    assert count_after_edit == count_before_edit, (
+        "После редактирования количество statuses не должно меняться"
+    )
     assert page.is_status_present(new_name)
     assert not page.is_status_present(old_name)
 
     row_values = page.get_status_row_values(new_name)
     assert row_values["name"] == new_name
     assert row_values["slug"] == new_slug
+    assert row_values["name"] != old_name
+    assert row_values["slug"] != old_slug
 
     print("\nУспех! Редактирование и валидация проверены.")
 
@@ -132,8 +133,12 @@ def test_edit_status(auth_driver):
 def test_delete_status_via_checkbox(auth_driver):
     page = StatusesPage(auth_driver)
 
-    target_name, _target_slug, _, count_before_delete = \
-        create_status_and_get_state(page, prefix="DeleteStatusCheckbox",)
+    target_name, _target_slug, _, count_before_delete = (
+        create_status_and_get_state(
+            page,
+            prefix="DeleteStatusCheckbox",
+        )
+    )
 
     page.open_statuses()
     page.select_checkbox_by_name(target_name)
@@ -157,8 +162,12 @@ def test_delete_status_via_checkbox(auth_driver):
 def test_delete_status_via_edit(auth_driver):
     page = StatusesPage(auth_driver)
 
-    target_name, _target_slug, _, count_before_delete = \
-        create_status_and_get_state(page, prefix="DeleteStatusEdit",)
+    target_name, _target_slug, _, count_before_delete = (
+        create_status_and_get_state(
+            page,
+            prefix="DeleteStatusEdit",
+        )
+    )
 
     page.open_statuses()
     page.open_status_by_name(target_name)
@@ -181,18 +190,44 @@ def test_delete_status_via_edit(auth_driver):
 @pytest.mark.step_5_deleteAll
 def test_delete_all_statuses(auth_driver):
     page = StatusesPage(auth_driver)
-    page.open_statuses()
 
-    initial_count = page.get_statuses_count()
+    created_names = []
+    for prefix in ("DeleteAllStatusA", "DeleteAllStatusB"):
+        created_name, _, _, _ = create_status_and_get_state(
+            page,
+            prefix=prefix,
+        )
+        created_names.append(created_name)
+
+    page.open_statuses()
+    initial_names = page.get_all_status_names()
+    initial_count = len(initial_names)
+
     assert initial_count > 0, "Список пуст"
+    for created_name in created_names:
+        assert created_name in initial_names, (
+            f"Контрольный статус '{created_name}' "
+            "не найден перед delete all"
+        )
 
     page.select_all_checkbox()
     page.click_delete_button()
 
     page.open_statuses()
+    page.wait_for_empty_state()
 
-    assert page.get_statuses_count() == 0
-    assert page.is_empty_message_visible()
+    assert page.is_empty_message_visible(), (
+        "После delete all не появился empty state"
+    )
+    assert page.get_statuses_count() == 0, (
+        "После delete all на странице остались строки statuses"
+    )
+
+    for created_name in created_names:
+        assert not page.is_status_present(created_name), (
+            f"Контрольный статус '{created_name}' "
+            "остался после delete all"
+        )
 
     print(
         f"\nУспех! Список статусов полностью очищен. "

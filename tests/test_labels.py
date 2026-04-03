@@ -7,15 +7,10 @@ from pages.labels_page import LabelsPage
 
 
 def build_unique_label_name(prefix="Label"):
-    """Генерация уникального label name"""
     return f"{prefix}_{time.time_ns()}"
 
 
 def create_label_and_get_state(page, prefix="Label"):
-    """
-    Создание label и проверка:
-    new_name, count_before_create, count_after_create
-    """
     page.open_labels()
     count_before_create = page.get_labels_count()
 
@@ -41,11 +36,9 @@ def create_label_and_get_state(page, prefix="Label"):
 
 @pytest.mark.step_6_viewList
 def test_view_labels_list(auth_driver):
-    # Проверка открытия списка и загрузки страницы
     page = LabelsPage(auth_driver)
     page.open_labels()
 
-    # Проверка наличия элементов и списка
     header_text = auth_driver.find_element(
         By.CSS_SELECTOR,
         "table thead",
@@ -84,7 +77,7 @@ def test_create_label(auth_driver):
 def test_edit_label(auth_driver):
     page = LabelsPage(auth_driver)
 
-    old_name, _, _ = create_label_and_get_state(
+    old_name, _, count_before_edit = create_label_and_get_state(
         page,
         prefix="EditLabelOld",
     )
@@ -92,12 +85,12 @@ def test_edit_label(auth_driver):
     page.open_labels()
     page.open_label_by_name(old_name)
 
-    # Проверка валидации пустого поля
     page.force_clear_input("name")
+    assert page.get_input_value("name") == "", "Поле name не очистилось"
+
     page.click_save()
     assert "required" in page.get_error_message().lower()
 
-    # Обновление значения
     new_name = build_unique_label_name("EditLabelNew")
     page.fill_label_form(name=new_name)
     page.click_save()
@@ -105,10 +98,11 @@ def test_edit_label(auth_driver):
     page.open_labels()
     page.wait_for_label_present(new_name)
 
-    # Проверка обновления на новые значения
+    count_after_edit = page.get_labels_count()
+    assert count_after_edit == count_before_edit, (
+        "После редактирования количество labels не должно меняться"
+    )
     assert page.is_label_present(new_name)
-
-    # Проверка исчезновения старых значений
     assert not page.is_label_present(old_name)
 
     row_values = page.get_label_row_values(new_name)
@@ -177,7 +171,10 @@ def test_delete_all_labels(auth_driver):
 
     created_names = []
     for prefix in ("DeleteAllLabelA", "DeleteAllLabelB"):
-        created_name, _, _ = create_label_and_get_state(page, prefix=prefix)
+        created_name, _, _ = create_label_and_get_state(
+            page,
+            prefix=prefix,
+        )
         created_names.append(created_name)
 
     page.open_labels()
@@ -187,13 +184,16 @@ def test_delete_all_labels(auth_driver):
     assert initial_count > 0, "Список пуст"
     for created_name in created_names:
         assert created_name in initial_names, (
-            f"Контрольный лейбл '{created_name}' не найден перед delete all"
+            f"Контрольный лейбл '{created_name}' "
+            "не найден перед delete all"
         )
 
     page.select_all_checkbox()
     page.click_delete_button()
 
     page.open_labels()
+    page.wait_for_empty_state()
+
     assert page.is_empty_message_visible(), (
         "После delete all не появился empty state"
     )
@@ -203,7 +203,8 @@ def test_delete_all_labels(auth_driver):
 
     for created_name in created_names:
         assert not page.is_label_present(created_name), (
-            f"Контрольный лейбл '{created_name}' остался после delete all"
+            f"Контрольный лейбл '{created_name}' "
+            "остался после delete all"
         )
 
     print(
