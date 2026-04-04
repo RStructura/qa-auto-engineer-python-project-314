@@ -15,8 +15,6 @@ def test_login_page_elements(driver, base_url):
         "На странице логина не должна отображаться кнопка профиля"
     )
 
-    print("\nУспех! Все основные элементы отображаются корректно")
-
 
 @pytest.mark.step_3
 def test_successful_login_and_logout(driver, base_url):
@@ -24,33 +22,11 @@ def test_successful_login_and_logout(driver, base_url):
     driver.get(base_url)
 
     page.login("admin@google.com", "admin1234567")
-
-    assert page.is_profile_button_visible(), (
-        "После логина не отображается кнопка профиля"
-    )
-    assert not page.is_login_button_visible(), (
-        "После логина кнопка входа не должна быть видна"
-    )
-    assert not page.is_username_input_visible(), (
-        "После логина поле Username не должно быть видно"
-    )
-    assert not page.is_password_input_visible(), (
-        "После логина поле Password не должно быть видно"
+    assert page.is_logged_in(), (
+        "После логина приложение осталось в состоянии login"
     )
 
     page.logout()
-
-    assert page.is_login_button_visible(), (
-        "После логаута кнопка входа должна быть видна"
+    assert page.is_logged_out(), (
+        "После логаута приложение не вернулось к экрану входа"
     )
-    assert page.is_username_input_visible(), (
-        "После логаута поле Username должно быть видно"
-    )
-    assert page.is_password_input_visible(), (
-        "После логаута поле Password должно быть видно"
-    )
-    assert not page.is_profile_button_visible(), (
-        "После логаута кнопка профиля не должна отображаться"
-    )
-
-    print("\nУспех! Вход и выход работают корректно.")

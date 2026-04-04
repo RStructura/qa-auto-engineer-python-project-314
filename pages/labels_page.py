@@ -1,7 +1,5 @@
 from selenium.common.exceptions import (
-    ElementClickInterceptedException,
     NoSuchElementException,
-    StaleElementReferenceException,
     WebDriverException,
 )
 from selenium.webdriver import ActionChains
@@ -16,34 +14,27 @@ class LabelsPage:
         self.driver = driver
         self.wait = WebDriverWait(driver, 10)
 
-        self.nav_link = (By.CSS_SELECTOR, 'a[href="#/labels"]')
-        self.delete_button = (By.CSS_SELECTOR, 'button[aria-label="Delete"]')
-        self.name_input = (By.NAME, "name")
-
-    # -----------------------------------------------------------------
-    # НАВИГАЦИЯ
-    # -----------------------------------------------------------------
+    def _safe_click(self, element):
+        self.driver.execute_script(
+            "arguments[0].scrollIntoView({block: 'center'});",
+            element,
+        )
+        try:
+            element.click()
+        except WebDriverException:
+            self.driver.execute_script("arguments[0].click();", element)
 
     def open_labels(self):
         self.wait.until(
-            EC.element_to_be_clickable(self.nav_link)
+            EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[href="#/labels"]'))
         ).click()
 
         self.wait.until(
             lambda d: (
                 len(d.find_elements(By.CSS_SELECTOR, "table")) > 0
-                or len(
-                    d.find_elements(
-                        By.CSS_SELECTOR,
-                        ".RaEmpty-message",
-                    )
-                ) > 0
+                or len(d.find_elements(By.CSS_SELECTOR, ".RaEmpty-message")) > 0
             )
         )
-
-    # -----------------------------------------------------------------
-    # ПОЛУЧЕНИЕ ДАННЫХ ДЛЯ ПРОВЕРОК
-    # -----------------------------------------------------------------
 
     def get_labels_count(self):
         return len(
@@ -75,6 +66,12 @@ class LabelsPage:
             By.NAME,
             field_name,
         ).get_attribute("value")
+
+    def get_table(self):
+        self.open_labels()
+        return self.wait.until(
+            EC.visibility_of_element_located((By.TAG_NAME, "table"))
+        )
 
     def get_label_row(self, name):
         return self.driver.find_element(
@@ -129,80 +126,31 @@ class LabelsPage:
             )
         )
 
-    # -----------------------------------------------------------------
-    # ВСПОМОГАТЕЛЬНЫЕ КЛИКИ
-    # -----------------------------------------------------------------
-
-    def _click_checkbox(self, locator):
-        checkbox = self.wait.until(
-            EC.presence_of_element_located(locator)
-        )
-
-        self.driver.execute_script(
-            "arguments[0].scrollIntoView({block: 'center'});",
-            checkbox,
-        )
-
-        try:
-            checkbox.click()
-        except (
-            ElementClickInterceptedException,
-            StaleElementReferenceException,
-            WebDriverException,
-        ):
-            self.driver.execute_script(
-                "arguments[0].click();",
-                checkbox,
-            )
-
-    def _click_button(self, locator):
-        button = self.wait.until(
-            EC.presence_of_element_located(locator)
-        )
-
-        self.driver.execute_script(
-            "arguments[0].scrollIntoView({block: 'center'});",
-            button,
-        )
-
-        self.wait.until(lambda d: d.find_element(*locator).is_enabled())
-
-        try:
-            button.click()
-        except (
-            ElementClickInterceptedException,
-            StaleElementReferenceException,
-            WebDriverException,
-        ):
-            self.driver.execute_script(
-                "arguments[0].click();",
-                button,
-            )
-
-    # -----------------------------------------------------------------
-    # РАБОТА СО СПИСКОМ
-    # -----------------------------------------------------------------
-
     def open_label_by_name(self, name):
-        self.get_label_row(name).click()
+        self._safe_click(self.get_label_row(name))
 
     def select_checkbox_by_name(self, name):
-        locator = (
+        checkbox = self.driver.find_element(
             By.XPATH,
             "//tr[.//td[contains(@class, 'column-name') "
             f"and normalize-space()='{name}']]//input[@type='checkbox']",
         )
-        self._click_checkbox(locator)
+        self._safe_click(checkbox)
 
     def select_all_checkbox(self):
-        locator = (
+        checkbox = self.driver.find_element(
             By.CSS_SELECTOR,
             "thead input[type='checkbox']",
         )
-        self._click_checkbox(locator)
+        self._safe_click(checkbox)
 
     def click_delete_button(self):
-        self._click_button(self.delete_button)
+        button = self.wait.until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, 'button[aria-label="Delete"]')
+            )
+        )
+        self._safe_click(button)
 
     def is_empty_message_visible(self):
         try:
@@ -213,10 +161,6 @@ class LabelsPage:
         except NoSuchElementException:
             return False
 
-    # -----------------------------------------------------------------
-    # СОЗДАНИЕ / РЕДАКТИРОВАНИЕ
-    # -----------------------------------------------------------------
-
     def click_create(self):
         self.wait.until(
             EC.element_to_be_clickable(
@@ -225,15 +169,19 @@ class LabelsPage:
         ).click()
 
         self.wait.until(
-            EC.visibility_of_element_located(self.name_input)
+            EC.visibility_of_element_located((By.NAME, "name"))
         )
 
     def fill_label_form(self, name=None):
         if name is not None:
-            self.driver.find_element(*self.name_input).send_keys(name)
+            self.driver.find_element(By.NAME, "name").send_keys(name)
 
     def click_save(self):
-        self._click_button((By.CSS_SELECTOR, 'button[type="submit"]'))
+        self.wait.until(
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, 'button[type="submit"]')
+            )
+        ).click()
 
     def force_clear_input(self, field_name):
         element = self.wait.until(
@@ -252,14 +200,8 @@ class LabelsPage:
         )
 
         self.driver.execute_script(
-            (
-                "arguments[0].dispatchEvent("
-                "new Event('input', {bubbles: true})"
-                ");"
-                "arguments[0].dispatchEvent("
-                "new Event('change', {bubbles: true})"
-                ");"
-            ),
+            "arguments[0].dispatchEvent(new Event('input', {bubbles: true}));"
+            "arguments[0].dispatchEvent(new Event('change', {bubbles: true}));",
             element,
         )
 
@@ -269,3 +211,44 @@ class LabelsPage:
                 field_name,
             ).get_attribute("value") == ""
         )
+
+    def create_label(self, name):
+        self.open_labels()
+        self.click_create()
+        self.fill_label_form(name=name)
+        self.click_save()
+        self.open_labels()
+        self.wait_for_label_present(name)
+        return self.is_label_present(name)
+
+    def edit_label(self, current_name, new_name):
+        self.open_labels()
+        self.open_label_by_name(current_name)
+        self.force_clear_input("name")
+        self.fill_label_form(name=new_name)
+        self.click_save()
+        self.open_labels()
+        self.wait_for_label_present(new_name)
+        return (
+            self.is_label_present(new_name)
+            and not self.is_label_present(current_name)
+        )
+
+    def delete_label(self, name):
+        self.open_labels()
+        self.open_label_by_name(name)
+        self.click_delete_button()
+        self.open_labels()
+        self.wait_for_label_absent(name)
+        return not self.is_label_present(name)
+
+    def delete_all_labels(self):
+        self.open_labels()
+        if self.get_labels_count() == 0:
+            return True
+
+        self.select_all_checkbox()
+        self.click_delete_button()
+        self.open_labels()
+        self.wait_for_empty_state()
+        return self.get_labels_count() == 0

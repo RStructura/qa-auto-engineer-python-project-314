@@ -1,7 +1,5 @@
 from selenium.common.exceptions import (
-    ElementClickInterceptedException,
     NoSuchElementException,
-    StaleElementReferenceException,
     WebDriverException,
 )
 from selenium.webdriver import ActionChains
@@ -16,35 +14,29 @@ class StatusesPage:
         self.driver = driver
         self.wait = WebDriverWait(driver, 10)
 
-        self.nav_link = (By.CSS_SELECTOR, 'a[href="#/task_statuses"]')
-        self.delete_button = (By.CSS_SELECTOR, 'button[aria-label="Delete"]')
-        self.name_input = (By.NAME, "name")
-        self.slug_input = (By.NAME, "slug")
-
-    # -----------------------------------------------------------------
-    # НАВИГАЦИЯ
-    # -----------------------------------------------------------------
+    def _safe_click(self, element):
+        self.driver.execute_script(
+            "arguments[0].scrollIntoView({block: 'center'});",
+            element,
+        )
+        try:
+            element.click()
+        except WebDriverException:
+            self.driver.execute_script("arguments[0].click();", element)
 
     def open_statuses(self):
         self.wait.until(
-            EC.element_to_be_clickable(self.nav_link)
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, 'a[href="#/task_statuses"]')
+            )
         ).click()
 
         self.wait.until(
             lambda d: (
                 len(d.find_elements(By.CSS_SELECTOR, "table")) > 0
-                or len(
-                    d.find_elements(
-                        By.CSS_SELECTOR,
-                        ".RaEmpty-message",
-                    )
-                ) > 0
+                or len(d.find_elements(By.CSS_SELECTOR, ".RaEmpty-message")) > 0
             )
         )
-
-    # -----------------------------------------------------------------
-    # ПОЛУЧЕНИЕ ДАННЫХ ДЛЯ ПРОВЕРОК
-    # -----------------------------------------------------------------
 
     def get_statuses_count(self):
         return len(
@@ -76,6 +68,12 @@ class StatusesPage:
             By.NAME,
             field_name,
         ).get_attribute("value")
+
+    def get_table(self):
+        self.open_statuses()
+        return self.wait.until(
+            EC.visibility_of_element_located((By.TAG_NAME, "table"))
+        )
 
     def get_status_row(self, name):
         return self.driver.find_element(
@@ -127,87 +125,31 @@ class StatusesPage:
             ) == 0
         )
 
-    def wait_for_empty_state(self):
-        self.wait.until(
-            EC.visibility_of_element_located(
-                (By.CSS_SELECTOR, ".RaEmpty-message")
-            )
-        )
-
-    # -----------------------------------------------------------------
-    # ВСПОМОГАТЕЛЬНЫЕ КЛИКИ
-    # -----------------------------------------------------------------
-
-    def _click_checkbox(self, locator):
-        checkbox = self.wait.until(
-            EC.presence_of_element_located(locator)
-        )
-
-        self.driver.execute_script(
-            "arguments[0].scrollIntoView({block: 'center'});",
-            checkbox,
-        )
-
-        try:
-            checkbox.click()
-        except (
-            ElementClickInterceptedException,
-            StaleElementReferenceException,
-            WebDriverException,
-        ):
-            self.driver.execute_script(
-                "arguments[0].click();",
-                checkbox,
-            )
-
-    def _click_button(self, locator):
-        button = self.wait.until(
-            EC.presence_of_element_located(locator)
-        )
-
-        self.driver.execute_script(
-            "arguments[0].scrollIntoView({block: 'center'});",
-            button,
-        )
-
-        self.wait.until(lambda d: d.find_element(*locator).is_enabled())
-
-        try:
-            button.click()
-        except (
-            ElementClickInterceptedException,
-            StaleElementReferenceException,
-            WebDriverException,
-        ):
-            self.driver.execute_script(
-                "arguments[0].click();",
-                button,
-            )
-
-    # -----------------------------------------------------------------
-    # РАБОТА СО СПИСКОМ
-    # -----------------------------------------------------------------
-
     def open_status_by_name(self, name):
-        self.get_status_row(name).click()
+        self._safe_click(self.get_status_row(name))
 
     def select_checkbox_by_name(self, name):
-        locator = (
+        checkbox = self.driver.find_element(
             By.XPATH,
             "//tr[.//td[contains(@class, 'column-name') "
             f"and normalize-space()='{name}']]//input[@type='checkbox']",
         )
-        self._click_checkbox(locator)
+        self._safe_click(checkbox)
 
     def select_all_checkbox(self):
-        locator = (
+        checkbox = self.driver.find_element(
             By.CSS_SELECTOR,
             "thead input[type='checkbox']",
         )
-        self._click_checkbox(locator)
+        self._safe_click(checkbox)
 
     def click_delete_button(self):
-        self._click_button(self.delete_button)
+        button = self.wait.until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, 'button[aria-label="Delete"]')
+            )
+        )
+        self._safe_click(button)
 
     def is_empty_message_visible(self):
         try:
@@ -218,10 +160,6 @@ class StatusesPage:
         except NoSuchElementException:
             return False
 
-    # -----------------------------------------------------------------
-    # СОЗДАНИЕ / РЕДАКТИРОВАНИЕ
-    # -----------------------------------------------------------------
-
     def click_create(self):
         self.wait.until(
             EC.element_to_be_clickable(
@@ -230,17 +168,21 @@ class StatusesPage:
         ).click()
 
         self.wait.until(
-            EC.visibility_of_element_located(self.name_input)
+            EC.visibility_of_element_located((By.NAME, "name"))
         )
 
     def fill_status_form(self, name=None, slug=None):
         if name is not None:
-            self.driver.find_element(*self.name_input).send_keys(name)
+            self.driver.find_element(By.NAME, "name").send_keys(name)
         if slug is not None:
-            self.driver.find_element(*self.slug_input).send_keys(slug)
+            self.driver.find_element(By.NAME, "slug").send_keys(slug)
 
     def click_save(self):
-        self._click_button((By.CSS_SELECTOR, 'button[type="submit"]'))
+        self.wait.until(
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, 'button[type="submit"]')
+            )
+        ).click()
 
     def force_clear_input(self, field_name):
         element = self.wait.until(
@@ -259,14 +201,8 @@ class StatusesPage:
         )
 
         self.driver.execute_script(
-            (
-                "arguments[0].dispatchEvent("
-                "new Event('input', {bubbles: true})"
-                ");"
-                "arguments[0].dispatchEvent("
-                "new Event('change', {bubbles: true})"
-                ");"
-            ),
+            "arguments[0].dispatchEvent(new Event('input', {bubbles: true}));"
+            "arguments[0].dispatchEvent(new Event('change', {bubbles: true}));",
             element,
         )
 
@@ -275,4 +211,50 @@ class StatusesPage:
                 By.NAME,
                 field_name,
             ).get_attribute("value") == ""
+        )
+
+    def create_status(self, name, slug):
+        self.open_statuses()
+        self.click_create()
+        self.fill_status_form(name=name, slug=slug)
+        self.click_save()
+        self.open_statuses()
+        self.wait_for_status_present(name)
+        return self.is_status_present(name)
+
+    def edit_status(self, current_name, new_name, new_slug=None):
+        self.open_statuses()
+        self.open_status_by_name(current_name)
+        self.force_clear_input("name")
+        self.fill_status_form(name=new_name)
+        if new_slug is not None:
+            self.force_clear_input("slug")
+            self.fill_status_form(slug=new_slug)
+        self.click_save()
+        self.open_statuses()
+        self.wait_for_status_present(new_name)
+        return (
+            self.is_status_present(new_name)
+            and not self.is_status_present(current_name)
+        )
+
+    def delete_status(self, name):
+        self.open_statuses()
+        self.open_status_by_name(name)
+        self.click_delete_button()
+        self.open_statuses()
+        self.wait_for_status_absent(name)
+        return not self.is_status_present(name)
+
+    def delete_all_statuses(self):
+        self.open_statuses()
+        if self.get_statuses_count() == 0:
+            return True
+
+        self.select_all_checkbox()
+        self.click_delete_button()
+        self.open_statuses()
+        return (
+            self.get_statuses_count() == 0
+            and self.is_empty_message_visible()
         )
