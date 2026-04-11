@@ -1,7 +1,4 @@
-from selenium.common.exceptions import (
-    NoSuchElementException,
-    WebDriverException,
-)
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -14,25 +11,18 @@ class UsersPage:
         self.driver = driver
         self.wait = WebDriverWait(driver, 10)
 
-    def _safe_click(self, element):
-        self.driver.execute_script(
-            "arguments[0].scrollIntoView({block: 'center'});",
-            element,
-        )
-        try:
-            element.click()
-        except WebDriverException:
-            self.driver.execute_script("arguments[0].click();", element)
-
     def open_users(self):
-        self.wait.until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[href="#/users"]'))
-        ).click()
+        self.driver.find_element(By.CSS_SELECTOR, 'a[href="#/users"]').click()
 
         self.wait.until(
             lambda d: (
                 len(d.find_elements(By.CSS_SELECTOR, "table")) > 0
-                or len(d.find_elements(By.CSS_SELECTOR, ".RaEmpty-message")) > 0
+                or len(
+                    d.find_elements(
+                        By.CSS_SELECTOR,
+                        ".RaEmpty-message",
+                    )
+                ) > 0
             )
         )
 
@@ -127,8 +117,15 @@ class UsersPage:
             ) == 0
         )
 
+    def wait_for_empty_state(self):
+        self.wait.until(
+            EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, ".RaEmpty-message")
+            )
+        )
+
     def open_user_by_email(self, email):
-        self._safe_click(self.get_user_row(email))
+        self.get_user_row(email).click()
 
     def select_checkbox_by_email(self, email):
         checkbox = self.driver.find_element(
@@ -136,22 +133,19 @@ class UsersPage:
             "//tr[.//td[contains(@class, 'column-email') "
             f"and normalize-space()='{email}']]//input[@type='checkbox']",
         )
-        self._safe_click(checkbox)
+        checkbox.click()
 
     def select_all_checkbox(self):
-        checkbox = self.driver.find_element(
+        self.driver.find_element(
             By.CSS_SELECTOR,
             "thead input[type='checkbox']",
-        )
-        self._safe_click(checkbox)
+        ).click()
 
     def click_delete_button(self):
-        button = self.wait.until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, 'button[aria-label="Delete"]')
-            )
-        )
-        self._safe_click(button)
+        self.driver.find_element(
+            By.CSS_SELECTOR,
+            'button[aria-label="Delete"]',
+        ).click()
 
     def is_empty_message_visible(self):
         try:
@@ -163,10 +157,9 @@ class UsersPage:
             return False
 
     def click_create(self):
-        self.wait.until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, 'a[href="#/users/create"]')
-            )
+        self.driver.find_element(
+            By.CSS_SELECTOR,
+            'a[href="#/users/create"]',
         ).click()
 
         self.wait.until(
@@ -182,40 +175,16 @@ class UsersPage:
             self.driver.find_element(By.NAME, "lastName").send_keys(last)
 
     def click_save(self):
-        self.wait.until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, 'button[type="submit"]')
-            )
+        self.driver.find_element(
+            By.CSS_SELECTOR,
+            'button[type="submit"]',
         ).click()
 
     def force_clear_input(self, field_name):
-        element = self.wait.until(
-            EC.visibility_of_element_located((By.NAME, field_name))
-        )
-        element.click()
-
+        element = self.driver.find_element(By.NAME, field_name)
         actions = ActionChains(self.driver)
-        (
-            actions
-            .key_down(Keys.CONTROL)
-            .send_keys("a")
-            .key_up(Keys.CONTROL)
-            .send_keys(Keys.BACKSPACE)
-            .perform()
-        )
-
-        self.driver.execute_script(
-            "arguments[0].dispatchEvent(new Event('input', {bubbles: true}));"
-            "arguments[0].dispatchEvent(new Event('change', {bubbles: true}));",
-            element,
-        )
-
-        self.wait.until(
-            lambda d: d.find_element(
-                By.NAME,
-                field_name,
-            ).get_attribute("value") == ""
-        )
+        actions.move_to_element(element).click().click().click().perform()
+        element.send_keys(Keys.BACKSPACE)
 
     def create_user(self, email, first_name, last_name):
         self.open_users()
@@ -271,18 +240,11 @@ class UsersPage:
 
     def delete_all_users(self):
         self.open_users()
-        rows = self.driver.find_elements(By.CSS_SELECTOR, "tbody tr")
-        if not rows:
+        if self.get_users_count() == 0:
             return True
 
-        for row in rows:
-            checkbox = row.find_element(
-                By.CSS_SELECTOR,
-                "input[type='checkbox']",
-            )
-            if not checkbox.is_selected():
-                self._safe_click(checkbox)
-
+        self.select_all_checkbox()
         self.click_delete_button()
         self.open_users()
-        return self.get_users_count() == 0 and self.is_empty_message_visible()
+        self.wait_for_empty_state()
+        return self.get_users_count() == 0

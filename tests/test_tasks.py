@@ -9,7 +9,6 @@ from pages.users_page import UsersPage
 
 
 def build_unique_task_payload(prefix):
-    """Генерация уникальных title/content"""
     unique_value = time.time_ns()
     title = f"{prefix} {unique_value}"
     content = f"Description {unique_value}"
@@ -107,6 +106,43 @@ def create_label_for_tasks(driver, prefix):
     return name
 
 
+def create_task_dependencies(
+    driver,
+    prefix,
+    *,
+    label_count=1,
+    with_alt_status=False,
+):
+    assignee = create_user_for_tasks(driver, f"{prefix}User")
+
+    primary_status, _primary_slug = create_status_for_tasks(
+        driver,
+        f"{prefix}PrimaryStatus",
+    )
+
+    secondary_status = None
+    if with_alt_status:
+        secondary_status, _secondary_slug = create_status_for_tasks(
+            driver,
+            f"{prefix}SecondaryStatus",
+        )
+
+    labels = []
+    for index in range(label_count):
+        label_name = create_label_for_tasks(
+            driver,
+            f"{prefix}Label{index + 1}",
+        )
+        labels.append(label_name)
+
+    return {
+        "assignee": assignee,
+        "primary_status": primary_status,
+        "secondary_status": secondary_status,
+        "labels": labels,
+    }
+
+
 def create_task_and_get_id(
     page,
     *,
@@ -115,13 +151,12 @@ def create_task_and_get_id(
     labels,
     prefix,
 ):
-    """
-    Создание задачи и проверка:
-    task_id, title, content, count_before_create, count_after_create
-    """
     page.open_tasks()
-    count_before_create = page.get_tasks_count()
+    assert page.verify_filters_visible(), (
+        "Страница tasks не загрузилась перед созданием задачи"
+    )
 
+    count_before_create = page.get_tasks_count()
     title, content = build_unique_task_payload(prefix)
 
     page.create_task(
@@ -161,7 +196,6 @@ def apply_filters(page, *, assignee, status, label):
 
 
 def create_filter_dataset(driver):
-    """Подготовка собственного набора данных для строгой проверки фильтров"""
     filter_user_email = create_user_for_tasks(driver, "FilterUser")
     other_user_email = create_user_for_tasks(driver, "OtherUser")
 
@@ -231,8 +265,6 @@ def test_view_tasks(auth_driver):
     count = page.get_tasks_count()
     assert count > 0, "Задачи не отображаются на канбан-доске"
 
-    print(f"\nУспех! Канбан-доска загружена. Найдено задач: {count}")
-
 
 @pytest.mark.step_7_filtersTasks
 def test_filter_tasks(auth_driver):
@@ -276,7 +308,8 @@ def test_filter_tasks(auth_driver):
         page.get_task_ids_in_column(dataset["filter_status_name"])
     )
     assert filtered_ids == visible_in_column, (
-        "После фильтра по статусу видны не только задачи нужного статуса"
+        "После фильтра по статусу видны не только "
+        "задачи нужного статуса"
     )
 
     assert not page.is_task_present(wrong_user_task_id), (
@@ -305,14 +338,14 @@ def test_filter_tasks(auth_driver):
         "Content контрольной задачи не найден на show-странице"
     )
 
-    print(
-        f"\nУспех! Фильтры работают строго. "
-        f"Было задач: {initial_count}, стало: {filtered_count}."
-    )
-
 
 @pytest.mark.step_7_createTasks
 def test_create_new_task(auth_driver):
+    dependencies = create_task_dependencies(
+        auth_driver,
+        "CreateTask",
+        label_count=2,
+    )
     page = TasksPage(auth_driver)
 
     (
@@ -323,15 +356,16 @@ def test_create_new_task(auth_driver):
         final_count,
     ) = create_task_and_get_id(
         page,
-        assignee="emily@example.com",
-        status="Draft",
-        labels=["task", "feature"],
+        assignee=dependencies["assignee"],
+        status=dependencies["primary_status"],
+        labels=dependencies["labels"],
         prefix="CreateTask",
     )
 
-    assert page.is_task_in_column(task_id, "Draft"), (
-        "Новая задача не попала в колонку Draft"
-    )
+    assert page.is_task_in_column(
+        task_id,
+        dependencies["primary_status"],
+    ), "Новая задача не попала в ожидаемую колонку"
 
     assert page.get_task_title(task_id).lower() == test_title.lower()
     assert page.get_task_content(task_id).lower() == test_content.lower()
@@ -339,21 +373,39 @@ def test_create_new_task(auth_driver):
     page.open_task_show(task_id)
     details = page.get_current_page_text()
 
-    assert "emily@example.com" in details
+    assert dependencies["assignee"].lower() in details
     assert test_title.lower() in details
     assert test_content.lower() in details
-    assert "task" in details
-    assert "feature" in details
 
-    print(
-        f"\nУспех! Было задач: {initial_count}, стало: {final_count}. "
-        f"Задача '{test_title}' создана корректно."
-    )
+    for label_name in dependencies["labels"]:
+        assert label_name.lower() in details
+
+    assert final_count == initial_count + 1
 
 
 @pytest.mark.step_7_editTasks
 def test_edit_task(auth_driver):
+    dependencies = create_task_dependencies(
+        auth_driver,
+        "EditTask",
+        label_count=2,
+        with_alt_status=True,
+    )
     page = TasksPage(auth_driver)
+
+    (
+        anchor_task_id,
+        anchor_title,
+        anchor_content,
+        _anchor_before,
+        _anchor_after,
+    ) = create_task_and_get_id(
+        page,
+        assignee=dependencies["assignee"],
+        status=dependencies["primary_status"],
+        labels=[dependencies["labels"][0]],
+        prefix="AnchorTask",
+    )
 
     (
         task_id,
@@ -363,9 +415,9 @@ def test_edit_task(auth_driver):
         _count_after_create,
     ) = create_task_and_get_id(
         page,
-        assignee="john@google.com",
-        status="Draft",
-        labels=["task"],
+        assignee=dependencies["assignee"],
+        status=dependencies["primary_status"],
+        labels=[dependencies["labels"][0]],
         prefix="EditTaskOld",
     )
 
@@ -376,6 +428,9 @@ def test_edit_task(auth_driver):
     page.update_task_fields(
         title=new_title,
         content=new_content,
+        status=dependencies["secondary_status"],
+        new_labels=[dependencies["labels"][1]],
+        old_labels=[dependencies["labels"][0]],
     )
 
     page.open_tasks()
@@ -384,6 +439,14 @@ def test_edit_task(auth_driver):
     assert page.is_task_present(task_id), (
         f"После редактирования задача {task_id} пропала с доски"
     )
+    assert page.is_task_in_column(
+        task_id,
+        dependencies["secondary_status"],
+    ), "После редактирования задача не сменила статус"
+    assert not page.is_task_in_column(
+        task_id,
+        dependencies["primary_status"],
+    ), "После редактирования задача осталась в старом статусе"
 
     current_title = page.get_task_title(task_id)
     current_content = page.get_task_content(task_id)
@@ -394,12 +457,45 @@ def test_edit_task(auth_driver):
     assert current_title.lower() != old_title.lower()
     assert current_content.lower() != old_content.lower()
 
-    print(f"\nУспех! Задача с ID = {task_id} успешно обновлена.")
+    assert page.get_task_title(anchor_task_id).lower() == (
+        anchor_title.lower()
+    )
+    assert page.get_task_content(anchor_task_id).lower() == (
+        anchor_content.lower()
+    )
+
+    page.open_task_show(task_id)
+    details = page.get_current_page_text()
+
+    assert dependencies["labels"][1].lower() in details
+    assert dependencies["labels"][0].lower() not in details
+    assert new_title.lower() in details
+    assert new_content.lower() in details
 
 
 @pytest.mark.step_7_dragAndDropTasks
 def test_drag_and_drop_between_columns(auth_driver):
+    dependencies = create_task_dependencies(
+        auth_driver,
+        "DnDTask",
+        label_count=1,
+        with_alt_status=True,
+    )
     page = TasksPage(auth_driver)
+
+    (
+        anchor_task_id,
+        anchor_title,
+        anchor_content,
+        _anchor_before,
+        _anchor_after,
+    ) = create_task_and_get_id(
+        page,
+        assignee=dependencies["assignee"],
+        status=dependencies["primary_status"],
+        labels=dependencies["labels"],
+        prefix="DnDAnchor",
+    )
 
     (
         task_id,
@@ -409,17 +505,18 @@ def test_drag_and_drop_between_columns(auth_driver):
         _count_after_create,
     ) = create_task_and_get_id(
         page,
-        assignee="john@google.com",
-        status="To Review",
-        labels=["bug"],
+        assignee=dependencies["assignee"],
+        status=dependencies["primary_status"],
+        labels=dependencies["labels"],
         prefix="DnDTask",
     )
 
-    start_status = "To Review"
-    target_status = "Draft"
+    start_status = dependencies["primary_status"]
+    target_status = dependencies["secondary_status"]
 
     assert page.is_task_in_column(task_id, start_status), (
-        f"Задача {task_id} должна быть в {start_status} перед началом теста"
+        f"Задача {task_id} должна быть в {start_status} "
+        "перед началом теста"
     )
 
     page.move_task_to_status(task_id, target_status)
@@ -431,18 +528,41 @@ def test_drag_and_drop_between_columns(auth_driver):
         f"Задача {task_id} не перемещена в {target_status}"
     )
 
+    assert page.is_task_in_column(anchor_task_id, start_status), (
+        "Контрольная задача неожиданно сменила колонку"
+    )
     assert page.get_task_title(task_id).lower() == title.lower()
     assert page.get_task_content(task_id).lower() == content.lower()
-
-    print(
-        f"\nУспех! Задача с ID = {task_id} "
-        f"перемещена из '{start_status}' в '{target_status}'."
+    assert page.get_task_title(anchor_task_id).lower() == (
+        anchor_title.lower()
+    )
+    assert page.get_task_content(anchor_task_id).lower() == (
+        anchor_content.lower()
     )
 
 
 @pytest.mark.step_7_deleteTasks
 def test_delete_task_by_show(auth_driver):
+    dependencies = create_task_dependencies(
+        auth_driver,
+        "DeleteTask",
+        label_count=1,
+    )
     page = TasksPage(auth_driver)
+
+    (
+        anchor_task_id,
+        anchor_title,
+        anchor_content,
+        _anchor_before,
+        _anchor_after,
+    ) = create_task_and_get_id(
+        page,
+        assignee=dependencies["assignee"],
+        status=dependencies["primary_status"],
+        labels=dependencies["labels"],
+        prefix="DeleteAnchor",
+    )
 
     (
         task_id,
@@ -452,9 +572,9 @@ def test_delete_task_by_show(auth_driver):
         count_before_delete,
     ) = create_task_and_get_id(
         page,
-        assignee="john@google.com",
-        status="Draft",
-        labels=["task"],
+        assignee=dependencies["assignee"],
+        status=dependencies["primary_status"],
+        labels=dependencies["labels"],
         prefix="DeleteTask",
     )
 
@@ -469,18 +589,23 @@ def test_delete_task_by_show(auth_driver):
 
     final_count = page.get_tasks_count()
     assert final_count == count_before_delete - 1, (
-        f"Ожидали {count_before_delete - 1} задач, но нашли {final_count}"
+        f"Ожидали {count_before_delete - 1} задач, "
+        f"но нашли {final_count}"
     )
     assert not page.is_task_present(task_id), (
         f"Карточка с ID = {task_id} не была удалена"
+    )
+    assert page.is_task_present(anchor_task_id), (
+        "Контрольная задача была удалена вместо целевой"
+    )
+    assert page.get_task_title(anchor_task_id).lower() == (
+        anchor_title.lower()
+    )
+    assert page.get_task_content(anchor_task_id).lower() == (
+        anchor_content.lower()
     )
 
     page_context = page.get_page_context().lower()
     assert title.lower() not in page_context, (
         f"Удаленная задача '{title}' все еще видна на странице"
-    )
-
-    print(
-        f"\nУспех! Было задач: {count_before_delete}, стало: {final_count}. "
-        f"Карточка с ID = {task_id} удалена."
     )
