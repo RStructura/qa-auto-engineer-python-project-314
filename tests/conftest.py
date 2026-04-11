@@ -16,7 +16,7 @@ from pages.login_page import LoginPage
 ARTIFACTS_DIR = Path("artifacts")
 ARTIFACTS_DIR.mkdir(exist_ok=True)
 
-# Управление режимами через переменные окружения
+# Управление режимами через переменные окружения. Выкл: HEADLESS=0, SLOWMO=1
 HEADLESS_ENABLED = os.getenv("HEADLESS", "1") == "1"
 SLOWMO_ENABLED = os.getenv("SLOWMO", "0") == "1"
 
@@ -37,7 +37,6 @@ class SlowMotionListener(AbstractEventListener):
 def driver():
     options = Options()
 
-    # Headless можно выключить так: HEADLESS=0
     if HEADLESS_ENABLED:
         options.add_argument("--headless=new")
 
@@ -45,10 +44,8 @@ def driver():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
-
     # Логи браузера
     options.set_capability("goog:loggingPrefs", {"browser": "ALL"})
-
     # Отключение плашки об автоматизации
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
 
@@ -59,9 +56,12 @@ def driver():
     }
     options.add_experimental_option("prefs", prefs)
 
+    chrome_binary = os.getenv("CHROME_BIN", "/usr/bin/chromium")
+    if Path(chrome_binary).exists():
+        options.binary_location = chrome_binary
+
     raw_driver = webdriver.Chrome(options=options)
 
-    # Slow motion можно включить так: SLOWMO=1
     if SLOWMO_ENABLED:
         driver_instance = EventFiringWebDriver(
             raw_driver,
@@ -76,18 +76,15 @@ def driver():
     browser.quit()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def base_url():
     implementation = os.getenv("IMPLEMENTATION")
     if implementation:
         return f"http://{implementation}.test"
-    
+
     env_url = os.getenv("APP_BASE_URL")
     if env_url:
         return env_url
-
-    if os.path.exists("/.dockerenv"):
-        return "http://server"
 
     return "http://localhost:5173"
 
@@ -111,7 +108,8 @@ def pytest_runtest_makereport(item, call):
         return
 
     driver_instance = (
-        item.funcargs.get("driver") or item.funcargs.get("auth_driver")
+        item.funcargs.get("driver")
+        or item.funcargs.get("auth_driver")
     )
     if driver_instance is None:
         return
