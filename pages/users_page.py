@@ -1,4 +1,9 @@
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import (
+    ElementClickInterceptedException,
+    NoSuchElementException,
+    StaleElementReferenceException,
+    WebDriverException,
+)
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -11,9 +16,33 @@ class UsersPage:
         self.driver = driver
         self.wait = WebDriverWait(driver, 10)
 
-    def open_users(self):
-        self.driver.find_element(By.CSS_SELECTOR, 'a[href="#/users"]').click()
+        self.nav_link = (By.CSS_SELECTOR, 'a[href="#/users"]')
+        self.delete_button = (
+            By.CSS_SELECTOR,
+            'button[aria-label="Delete"]',
+        )
+        self.email_input = (By.NAME, "email")
+        self.first_input = (By.NAME, "firstName")
+        self.last_input = (By.NAME, "lastName")
 
+    def _safe_click(self, element):
+        self.driver.execute_script(
+            "arguments[0].scrollIntoView({block: 'center'});",
+            element,
+        )
+        try:
+            element.click()
+        except (
+            ElementClickInterceptedException,
+            StaleElementReferenceException,
+            WebDriverException,
+        ):
+            self.driver.execute_script("arguments[0].click();", element)
+
+    def open_users(self):
+        self.wait.until(
+            EC.element_to_be_clickable(self.nav_link)
+        ).click()
         self.wait.until(
             lambda d: (
                 len(d.find_elements(By.CSS_SELECTOR, "table")) > 0
@@ -28,7 +57,10 @@ class UsersPage:
 
     def get_users_count(self):
         return len(
-            self.driver.find_elements(By.CSS_SELECTOR, "tr.RaDatagrid-row")
+            self.driver.find_elements(
+                By.CSS_SELECTOR,
+                "tbody tr.RaDatagrid-row",
+            )
         )
 
     def get_all_user_emails(self):
@@ -125,27 +157,29 @@ class UsersPage:
         )
 
     def open_user_by_email(self, email):
-        self.get_user_row(email).click()
+        self._safe_click(self.get_user_row(email))
 
     def select_checkbox_by_email(self, email):
         checkbox = self.driver.find_element(
             By.XPATH,
             "//tr[.//td[contains(@class, 'column-email') "
-            f"and normalize-space()='{email}']]//input[@type='checkbox']",
+            f"and normalize-space()='{email}']]"
+            "//input[@type='checkbox']",
         )
-        checkbox.click()
+        self._safe_click(checkbox)
 
     def select_all_checkbox(self):
-        self.driver.find_element(
+        checkbox = self.driver.find_element(
             By.CSS_SELECTOR,
             "thead input[type='checkbox']",
-        ).click()
+        )
+        self._safe_click(checkbox)
 
     def click_delete_button(self):
-        self.driver.find_element(
-            By.CSS_SELECTOR,
-            'button[aria-label="Delete"]',
-        ).click()
+        button = self.wait.until(
+            EC.presence_of_element_located(self.delete_button)
+        )
+        self._safe_click(button)
 
     def is_empty_message_visible(self):
         try:
@@ -157,34 +191,68 @@ class UsersPage:
             return False
 
     def click_create(self):
-        self.driver.find_element(
-            By.CSS_SELECTOR,
-            'a[href="#/users/create"]',
-        ).click()
-
         self.wait.until(
-            EC.visibility_of_element_located((By.NAME, "email"))
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, 'a[href="#/users/create"]')
+            )
+        ).click()
+        self.wait.until(
+            EC.visibility_of_element_located(self.email_input)
         )
 
     def fill_user_form(self, email=None, first=None, last=None):
         if email is not None:
-            self.driver.find_element(By.NAME, "email").send_keys(email)
+            self.driver.find_element(
+                *self.email_input
+            ).send_keys(email)
         if first is not None:
-            self.driver.find_element(By.NAME, "firstName").send_keys(first)
+            self.driver.find_element(
+                *self.first_input
+            ).send_keys(first)
         if last is not None:
-            self.driver.find_element(By.NAME, "lastName").send_keys(last)
+            self.driver.find_element(
+                *self.last_input
+            ).send_keys(last)
 
     def click_save(self):
-        self.driver.find_element(
-            By.CSS_SELECTOR,
-            'button[type="submit"]',
-        ).click()
+        button = self.wait.until(
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, 'button[type="submit"]')
+            )
+        )
+        self._safe_click(button)
 
     def force_clear_input(self, field_name):
-        element = self.driver.find_element(By.NAME, field_name)
+        element = self.wait.until(
+            EC.visibility_of_element_located((By.NAME, field_name))
+        )
+        element.click()
         actions = ActionChains(self.driver)
-        actions.move_to_element(element).click().click().click().perform()
-        element.send_keys(Keys.BACKSPACE)
+        (
+            actions
+            .key_down(Keys.CONTROL)
+            .send_keys("a")
+            .key_up(Keys.CONTROL)
+            .send_keys(Keys.BACKSPACE)
+            .perform()
+        )
+        self.driver.execute_script(
+            (
+                "arguments[0].dispatchEvent("
+                "new Event('input', {bubbles: true})"
+                ");"
+                "arguments[0].dispatchEvent("
+                "new Event('change', {bubbles: true})"
+                ");"
+            ),
+            element,
+        )
+        self.wait.until(
+            lambda d: d.find_element(
+                By.NAME,
+                field_name,
+            ).get_attribute("value") == ""
+        )
 
     def create_user(self, email, first_name, last_name):
         self.open_users()
@@ -208,20 +276,15 @@ class UsersPage:
     ):
         self.open_users()
         self.open_user_by_email(email)
-
         self.force_clear_input("firstName")
         self.fill_user_form(first=new_first_name)
-
         if new_last_name is not None:
             self.force_clear_input("lastName")
             self.fill_user_form(last=new_last_name)
-
         if new_email is not None:
             self.force_clear_input("email")
             self.fill_user_form(email=new_email)
-
         self.click_save()
-
         result_email = new_email or email
         self.open_users()
         self.wait_for_user_present(result_email)
@@ -242,7 +305,6 @@ class UsersPage:
         self.open_users()
         if self.get_users_count() == 0:
             return True
-
         self.select_all_checkbox()
         self.click_delete_button()
         self.open_users()
