@@ -1,6 +1,6 @@
 name: Python CI
 
-"on":
+on:
   push:
   pull_request:
 
@@ -51,7 +51,7 @@ jobs:
         run: make stop
 
       - name: SonarCloud scan
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@v5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -60,9 +60,6 @@ jobs:
             -Dsonar.projectKey=RStructura_qa-auto-engineer-python-project-314
             -Dsonar.organization=rstructura
             -Dsonar.python.coverage.reportPaths=coverage.xml
-            -Dsonar.sources=tests/pages,tests/utils,tests/config.py,
-            tests/constants.py,tests/conftest.py,conftest.py
+            -Dsonar.sources=tests/pages,tests/utils
             -Dsonar.tests=tests
             -Dsonar.test.inclusions=tests/test_*.py
-            -Dsonar.exclusions=artifacts/**,test-results/**,.venv/**,
-            **/__pycache__/**
