@@ -1,17 +1,38 @@
+# Python
 __pycache__/
-.coverage
-.Makefile.swp
-.pytest_cache/
-.python-version
-.ruff_cache/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+
+# Virtual environment and tool caches
 .venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 *_cache/
-*.cast
-*.egg-info
-*.log
-*.pyc
-artifacts/
-build/
+
+# Coverage and reports
+.coverage
 coverage.xml
+htmlcov/
+test-results/
+artifacts/
+
+# Build artifacts
+build/
 dist/
+
+# Logs and recordings
+*.log
+*.cast
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+
+# Local project files
+.python-version
+.Makefile.swp
 main.py

@@ -1,15 +1,17 @@
 name: Python CI
 
-on:
-  - push
-  - pull_request
+"on":
+  push:
+  pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      APP_BASE_URL: http://localhost:5173
     steps:
       - uses: actions/checkout@v6
-      
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -18,24 +20,37 @@ jobs:
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
+      - name: Add uv to PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
       - name: Install dependencies
         run: make install
 
       - name: Start application in Docker
-        run: make start &
+        run: make start
 
       - name: Wait for application
-        run: sleep 30
+        run: |
+          for _ in {1..30}; do
+            if curl -fsS "$APP_BASE_URL" > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Application did not become ready in time"
+          exit 1
 
       - name: Run linter and tests
-        env:
-          APP_BASE_URL: http://localhost:5173
         run: make check
 
-      - name: Generate Coverage Report
+      - name: Generate coverage report
         run: make test-coverage
 
-      - name: SonarCloud Scan
+      - name: Stop application
+        if: always()
+        run: make stop
+
+      - name: SonarCloud scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -45,4 +60,9 @@ jobs:
             -Dsonar.projectKey=RStructura_qa-auto-engineer-python-project-314
             -Dsonar.organization=rstructura
             -Dsonar.python.coverage.reportPaths=coverage.xml
-            -Dsonar.sources=pages
+            -Dsonar.sources=tests/pages,tests/utils,tests/config.py,
+            tests/constants.py,tests/conftest.py,conftest.py
+            -Dsonar.tests=tests
+            -Dsonar.test.inclusions=tests/test_*.py
+            -Dsonar.exclusions=artifacts/**,test-results/**,.venv/**,
+            **/__pycache__/**
